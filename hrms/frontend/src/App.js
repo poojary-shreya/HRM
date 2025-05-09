@@ -94,6 +94,12 @@ import ProofApproval from './components/Approval.jsx';
 import AllowanceClaimSystem from './components/AllowanceClaim.jsx';
 import AllowanceClaimApproval from './components/AllowanceApproval.jsx';
 import HRPropertyLossDashboard from './components/ViewLossProperty.jsx';
+import CreateProject from './components/createproject.jsx';
+import ActiveProjects from './components/activeprojects.jsx';
+import TaskManagement from './components/createtask.jsx';
+import AllTasksPage from './components/alltask.jsx';
+import MyTasksPage from './components/mytask.jsx';
+import Dashboard from './components/dashboard.jsx';
 const theme = createTheme({
   palette: {
     primary: { main: "#1976d2" },
@@ -148,7 +154,20 @@ const App = () => {
           <Route path="/improve" element={<ImprovementManagement />} />
           <Route path="/succession" element={<SuccessionPlan />} />
           <Route path="/offerapproval" element={<OfferApproval/>} />
-
+          <Route path="/create-project" element={<CreateProject />} />
+              <Route path="/active-projects" element={<ActiveProjects />} />
+             
+              <Route path='/createtask' element={<TaskManagement />} />
+              <Route path='/tasks' element={<AllTasksPage />} />
+              <Route path='/mytasks' element={<MyTasksPage />} />
+              <Route 
+                path="/dash" 
+                element={
+                  <Dashboard 
+                   
+                  />
+                } 
+              />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={["hr", "manager", "employee"]} />}>
           <Route path="/attendance" element={<Attendance />} />

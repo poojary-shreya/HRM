@@ -9,7 +9,8 @@ import {
   Box,
   Collapse,
   Divider,
-  Badge
+  Badge,
+  Typography
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -28,10 +29,27 @@ import {
   Receipt as Form16Icon,
   Visibility as ViewIcon,
   KeyboardArrowDown,
-  KeyboardArrowUp,Search
+  KeyboardArrowUp,
+  Search
+} from '@mui/icons-material';
+import {
+  Assignment as AssignmentIcon,
+  Group as GroupIcon,
+  Settings as SettingsIcon,
+  Description as DescriptionIcon,
+  BarChart as BarChartIcon,
+  ExpandLess,
+  ExpandMore,
 } from '@mui/icons-material';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import { Link, useLocation } from 'react-router-dom';
+import ChecklistIcon from '@mui/icons-material/Checklist';
+import { CalendarIcon } from '@mui/x-date-pickers';
+import ResourceIcon from '@mui/icons-material/Assessment'; // or another appropriate icon
+import BudgetIcon from '@mui/icons-material/AccountBalance'; // or Money, Payments, etc.
+import RiskIcon from '@mui/icons-material/Warning'; // or Report, Error, etc.
+import SecurityIcon from '@mui/icons-material/Security';
+import SprintIcon from '@mui/icons-material/DirectionsRun';
 
 const Sidebar = () => {
   const [open, setOpen] = useState(true);
@@ -41,6 +59,13 @@ const Sidebar = () => {
   const isLoggedIn = !!token;
   const role = userRole || null;
   const [notifications, setNotifications] = useState([]);
+  const [openProjects, setOpenProjects] = useState(false);
+  const [openTasks, setOpenTasks] = useState(false);
+  const [openSprints, setOpenSprints] = useState(false);
+  const [openResources, setOpenResources] = useState(false);
+  const [openBudget, setOpenBudget] = useState(false);
+  const [openReports, setOpenReports] = useState(false);
+
 
   const [openMenus, setOpenMenus] = useState({
     recruitment: false,
@@ -51,6 +76,7 @@ const Sidebar = () => {
     attendance: false,
     performance: false,
     training: false,
+    projectManagement: false,
   });
 
   useEffect(() => {
@@ -73,7 +99,31 @@ const Sidebar = () => {
   const toggleSidebar = () => {
     setOpen(!open);
   };
+ 
+  const handleToggleProjects = () => {
+    setOpenProjects(!openProjects);
+  };
 
+  const handleToggleTasks = () => {
+    setOpenTasks(!openTasks);
+  };
+
+  const handleToggleSprints = () => {
+    setOpenSprints(!openSprints);
+  };
+
+  const handleToggleResources = () => {
+    setOpenResources(!openResources);
+  };
+
+  const handleToggleBudget = () => {
+    setOpenBudget(!openBudget);
+  };
+
+  const handleToggleReports = () => {
+    setOpenReports(!openReports);
+  };
+  
   const handleMenuToggle = (menu) => {
     setOpenMenus(prev => ({
       ...prev,
@@ -82,9 +132,9 @@ const Sidebar = () => {
   };
 
   const rolePermissions = {
-    hr: ["recruitment", "employeeManagement", "employeeRequest", "payroll", "leave", "attendance", "performance", "training"],
-    manager: ["recruitment", "employeeManagement", "leave", "attendance", "performance", "payroll"],
-    employee: ["employeeManagement", "employeeRequest", "leave", "performance", "attendance", "payroll", "recruitment","training"],
+    hr: ["recruitment", "employeeManagement", "employeeRequest", "payroll", "leave", "attendance", "performance", "training", "projectManagement"],
+    manager: ["recruitment", "employeeManagement", "leave", "attendance", "performance", "payroll", "projectManagement"],
+    employee: ["employeeManagement", "employeeRequest", "leave", "performance", "attendance", "payroll", "recruitment", "training", "projectManagement"],
   };
 
   const isHR = role === "hr";
@@ -95,6 +145,8 @@ const Sidebar = () => {
     const items = [];
 
    
+
+    // Recruitment Section
     if (rolePermissions[role]?.includes("recruitment")) {
       items.push({
         title: "Recruitment & Onboarding",
@@ -125,7 +177,7 @@ const Sidebar = () => {
       });
     }
 
- 
+    // Employee Management Section
     if (rolePermissions[role]?.includes("employeeManagement")) {
       items.push({
         title: "Employee Management",
@@ -181,30 +233,26 @@ const Sidebar = () => {
     
         ] : role === "employee" ? [
           { name: "Employee Profile", path: "/employee" },
-         {name:"Employee Request" ,path:null,
-          icon: <AddPersonIcon />,
-          submenu: [
-            { name: "Bonafide ", path: "/bonafied" },
-            { name: "Advance Salary  ", path: "/advancesalary" },
-            { name: "View Certificate ", path: "/certificate" },
-          ]
-         },
-         {
-          name:"Training",
-          icon: <AddPersonIcon />,
+          {name:"Employee Request" ,path:null,
+            icon: <AddPersonIcon />,
+            submenu: [
+              { name: "Bonafide ", path: "/bonafied" },
+              { name: "Advance Salary  ", path: "/advancesalary" },
+              { name: "View Certificate ", path: "/certificate" },
+            ]
+          },
+          {
+            name:"Training",
+            icon: <AddPersonIcon />,
             submenu: [
               { name: "View training", path: "/updatetraining" }
             ]
-         }
-    
-        ] 
-      :[]
-      })
+          }
+        ] : []
+      });
     }
-    
 
-
-   
+    // Payroll Section
     if (rolePermissions[role]?.includes("payroll")) {
       items.push({
         title: "Payroll",
@@ -271,10 +319,8 @@ const Sidebar = () => {
               // {name:"RISU Statement",path:"/risu"},
               // {name:"Current AGP",path:"/agp"},
               {name: "Claims", path:"/allowanceclaim"},
-          { name: "View CTC Details", path: "/view-ctc" },
-          { name: "Projected Tax", path: "/projected-tax" },
-
-
+              { name: "View CTC Details", path: "/view-ctc" },
+              { name: "Projected Tax", path: "/projected-tax" }
             ]
           },
           // { name: "View CTC Details", path: "/view-ctc" },
@@ -284,15 +330,11 @@ const Sidebar = () => {
           { name: "Form 16", path: "/form16" },
           {name: "Form12BB", path:"/form12bb"},
           // {name: "Claims", path:"/allowanceclaim"},
-
         ]
       });
     }
 
-   
-  
-
-    
+    // Leave Section
     if (rolePermissions[role]?.includes("leave")) {
       items.push({
         title: "Leave",
@@ -306,7 +348,7 @@ const Sidebar = () => {
       });
     }
 
-  
+    // Attendance Section
     if (rolePermissions[role]?.includes("attendance")) {
       items.push({
         title: "Attendance",
@@ -320,7 +362,7 @@ const Sidebar = () => {
       });
     }
 
-   
+    // Performance Section
     if (rolePermissions[role]?.includes("performance")) {
       items.push({
         title: "Performance",
@@ -333,12 +375,99 @@ const Sidebar = () => {
         ]
       });
     }
-
- 
-    
+     // Project Management Section
+     if (rolePermissions[role]?.includes("projectManagement")) {
+      items.push({
+        title: "Project Management",
+        icon: <AssignmentIcon />,
+        key: "projectManagement",
+        submenu: [
+          { 
+            name: "Dashboard", 
+            path: "/dash", 
+            icon: <DashboardIcon /> 
+          },
+          {
+            name: "Projects",
+            path: null,
+            icon: <AssignmentIcon />,
+            submenu: [
+              { name: "All Projects", path: "/pro" },
+              { name: "Create Project", path: "/create-project" },
+              { name: "Active Projects", path: "/active-projects" }
+            ]
+          },
+          {
+            name: "Task Management",
+            path: null,
+            icon: <ChecklistIcon />,
+            submenu: [
+              { name: "All Tasks", path: "/tasks" },
+              { name: "My Tasks", path: "/mytasks" },
+              { name: "Create Task", path: "/createtask" }
+            ]
+          },
+          {
+            name: "Sprints",
+            path: null,
+            icon: <SprintIcon />,
+            submenu: [
+              { name: "Active Sprint", path: "/sprints" },
+              { name: "All Sprints", path: "/sprints/all" },
+              { name: "Create Sprint", path: "/sprints/create" },
+              // { name: "Sprint Planning", path: "/sprints/planning" },
+              // { name: "Retrospectives", path: "/sprints/retrospective" }
+            ]
+          },
+          {
+            name: "Resource Management",
+            path: null,
+            icon: <ResourceIcon />,
+            submenu: [
+              { name: "Resource Allocation", path: "/resources" },
+              { name: "Resource Utilization", path: "/resources/utilization" }
+            ]
+          },
+          { 
+            name: "Team Management", 
+            path: "/team", 
+            icon: <GroupIcon /> 
+          },
+          { 
+            name: "Calendar", 
+            path: "/calendar", 
+            icon: <CalendarIcon /> 
+          },
+          {
+            name: "Budget & Cost",
+            path: null,
+            icon: <BudgetIcon />,
+            submenu: [
+              { name: "Budget Tracking", path: "/budget" },
+              { name: "Cost Forecasts", path: "/budget/forecasts" }
+            ]
+          },
+          { 
+            name: "Risk Management", 
+            path: "/risks", 
+            icon: <RiskIcon /> 
+          },
+          {
+            name: "Reports & Analytics",
+            path: null,
+            icon: <BarChartIcon />,
+            submenu: [
+              { name: "Project Reports", path: "/reports/projects" },
+              { name: "Resource Reports", path: "/reports/resources" },
+              { name: "Budget Reports", path: "/reports/budget" },
+              { name: "Analytics Dashboard", path: "/reports/dashboard" }
+            ]
+          }
+        ]
+      });
+    }
     return items;
   };
-
 
   const renderNestedSubmenu = (submenuItems, parentPath = "") => {
     return submenuItems.map((subItem) => {
@@ -543,9 +672,9 @@ const Sidebar = () => {
             >
               <ListItemIcon sx={{ minWidth: open ? 30 : 'auto', justifyContent: 'center', color: 'inherit',
                 '& .MuiSvgIcon-root': { 
-      fontSize: '1.3rem' 
-    }
-               }}>
+                  fontSize: '1.3rem' 
+                }
+              }}>
                 {item.icon}
               </ListItemIcon>
               {open && <ListItemText 

@@ -218,7 +218,10 @@ Employee.associate = (models) => {
     foreignKey: 'employee_id', 
     as: 'tcsEntries' 
     });
-
+Employee.hasMany(models.Project, {
+  foreignKey: "lead_id",
+  as: "ledProjects"
+});
 
 
 };

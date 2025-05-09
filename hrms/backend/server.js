@@ -57,7 +57,7 @@ import ExemptionRoutes from "./routes/ExemptionRoutes.js"
 import losspropertyRoutes from "./routes/losspropertyRoutes.js"
 import employeeTdsRoutes from './routes/tdsRoutes.js';
 import employeeTcsRoutes from './routes/tcsRoutes.js';
-
+import projectRoutes from "./routes/projectRoutes.js"
 dotenv.config();
 
 const app = express();
@@ -125,7 +125,7 @@ app.use("/api",ExemptionRoutes);
 app.use("/api",losspropertyRoutes);
 app.use('/api/employees', employeeTdsRoutes);
 app.use('/api/employees', employeeTcsRoutes);
-
+app.use("/api/projects", projectRoutes);
 const startServer = async () => {
   try {
     await connectDB();
