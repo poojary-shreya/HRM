@@ -301,7 +301,7 @@ const ViewEmployees = () => {
                   <TableCell>{employee.lastName || "Not Available"}</TableCell>
                   <TableCell>{employee.personalemail || "Not Available"}</TableCell>
                   <TableCell>{employee.dateOfBirth || "Not Available"}</TableCell>
-                  <TableCell>{employee.anniversary || "Not Available"}</TableCell>
+                  <TableCell>{employee.anniversary || "single"}</TableCell>
                   <TableCell>{employee.phoneNumber || "Not Available"}</TableCell>
                   <TableCell>{employee.gender || "Not Specified"}</TableCell>
                   <TableCell>{employee.panNumber || "Not Available"}</TableCell>

@@ -46,20 +46,68 @@ const InterviewScheduleForm = () => {
   today.setHours(0, 0, 0, 0); // Set to beginning of day for proper comparison
 
   const [interview, setInterview] = useState({
-    name: candidateData.name || "",
-    email: candidateData.email || "",
-    skills: candidateData.skills || "",
-    experience: candidateData.experience || "",
-    interviewDate: null, // Changed to null for date picker
-    interviewTime: "", // Default empty string for time
+    name: "",
+    email: "",
+    skills: "",
+    experience: "",
+    interviewDate: null,
+    interviewTime: "",
     interviewer: "",
     round: "",
-    hiringManagerEmail: candidateData.hiringManagerEmail || "",
-    positionApplied: candidateData.positionApplied || "" 
+    hiringManagerEmail: "",
+    positionApplied: ""
   });
+
+  // Add state to track if experience has been fetched
+  const [experienceFetched, setExperienceFetched] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Function to parse experience value from various formats
+  const parseExperienceValue = (expValue) => {
+    if (!expValue) return "";
+    
+    // If it's already a number or string number, return as is
+    if (!isNaN(expValue)) return expValue.toString();
+    
+    // If it's a string like "5 years" extract the number
+    if (typeof expValue === 'string') {
+      const numericMatch = expValue.match(/(\d+(\.\d+)?)/);
+      if (numericMatch && numericMatch[1]) {
+        return numericMatch[1];
+      }
+    }
+    
+    return "";
+  };
+
+  // Function to fetch candidate experience from API if needed
+  const fetchCandidateExperience = async (candidateEmail) => {
+    if (!candidateEmail) return;
+    
+    try {
+      setExperienceFetched(true); // Mark as fetched before the API call to prevent multiple calls
+      
+      // Only fetch if we have an email but no experience value
+      const response = await axios.get(`http://localhost:5000/api/candidates/experience/${candidateEmail}`);
+      
+      if (response.data && response.data.success) {
+        const fetchedExperience = response.data.experience;
+        
+        // Update experience only if we got a valid value
+        if (fetchedExperience !== undefined && fetchedExperience !== null) {
+          setInterview(prev => ({
+            ...prev,
+            experience: fetchedExperience.toString()
+          }));
+        }
+      }
+    } catch (err) {
+      console.log("No experience data found for candidate or API error:", err);
+      // We'll keep the experience field editable even if fetch fails
+    }
+  };
 
   const fetchHiringManagers = async () => {
     setManagerLoadError(null);
@@ -108,20 +156,31 @@ const InterviewScheduleForm = () => {
   };
 
   useEffect(() => {
-    if (candidateData.name) {
-      setInterview((prev) => ({
+    // Initialize form with candidateData if available
+    if (candidateData) {
+      // Parse the experience value properly from candidateData
+      const parsedExperience = parseExperienceValue(candidateData.experience);
+      
+      setInterview(prev => ({
         ...prev,
-        name: candidateData.name,
-        email: candidateData.email,
+        name: candidateData.name || "",
+        email: candidateData.email || "",
         skills: candidateData.skills || "",
-        experience: candidateData.experience || "",
+        experience: parsedExperience,
         positionApplied: candidateData.positionApplied || "",
         hiringManagerEmail: candidateData.hiringManagerEmail || ""
       }));
+      
+      // If no experience was provided or parsed, try to fetch it
+      if (candidateData.email && !parsedExperience) {
+        fetchCandidateExperience(candidateData.email);
+      } else {
+        setExperienceFetched(true);
+      }
     }
     
     fetchHiringManagers();
-    fetchInterviewRounds(); // Fetch interview rounds
+    fetchInterviewRounds();
   }, [candidateData]);
 
   const handleSubmit = async (e) => {
@@ -154,7 +213,7 @@ const InterviewScheduleForm = () => {
       ...interview,
       interviewDate: formattedDate,
       interviewTime: timeValue,
-      experience: parseInt(interview.experience) || 0,
+      experience: parseFloat(interview.experience) || 0,
       positionApplied: interview.positionApplied 
     };
     
@@ -191,6 +250,13 @@ const InterviewScheduleForm = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFieldChange = (field, value) => {
+    setInterview(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   // Add Round Dialog Handlers
@@ -293,9 +359,15 @@ const InterviewScheduleForm = () => {
                       label="Candidate Email"
                       type="email"
                       value={interview.email || ""}
-                      onChange={(e) =>
-                        setInterview({ ...interview, email: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const newEmail = e.target.value;
+                        setInterview({ ...interview, email: newEmail });
+                        
+                        // If email changes and no experience set yet, try to fetch it
+                        if (newEmail && !interview.experience && !experienceFetched) {
+                          fetchCandidateExperience(newEmail);
+                        }
+                      }}
                       fullWidth
                       required
                       margin="normal"
@@ -319,28 +391,26 @@ const InterviewScheduleForm = () => {
                   <Grid item xs={12} sm={6}>
                     <TextField
                       label="Experience"
-                      value={interview.experience || ""}
-                      onChange={(e) =>
-                        setInterview({ ...interview, experience: e.target.value })
-                      }
+                      value={interview.experience}
+                      onChange={(e) => handleFieldChange('experience', e.target.value)}
                       fullWidth
                       margin="normal"
-                      InputProps={{ readOnly: !!candidateData?.experience }}
+                      type="number"
+                      // Always editable, regardless of source
+                      InputProps={{
+                        endAdornment: <InputAdornment position="end">years</InputAdornment>,
+                        inputProps: { min: 0, step: 0.5 } // Allow decimal values with 0.5 step
+                      }}
                     />
                   </Grid>
-                </Grid>
-                <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
                     <TextField
                       label="Job Title"
                       value={interview.positionApplied}
-                      onChange={(e) =>
-                        setInterview({ ...interview, positionApplied: e.target.value })
-                      }
+                      onChange={(e) => handleFieldChange('positionApplied', e.target.value)}
                       fullWidth
                       required
                       margin="normal"
-                      InputProps={{ readOnly: !!candidateData?.positionApplied }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -380,7 +450,6 @@ const InterviewScheduleForm = () => {
                         <DatePicker
                           label="Interview Date"
                           value={interview.interviewDate}
-                          
                           onChange={(newDate) => setInterview({ ...interview, interviewDate: newDate })}
                           disablePast 
                           shouldDisableDate={isDateDisabled}
@@ -413,18 +482,13 @@ const InterviewScheduleForm = () => {
                         required
                         InputLabelProps={{ shrink: true }}
                         margin="normal"
-                        // Setting a default value to avoid empty submission
                         inputProps={{ 
                           onKeyDown: (e) => e.preventDefault(),
                           min: "00:00",
                           max: "23:59"
                         }}
-                        // Ensure time is not an empty string
-                        // error={interview.interviewTime === ""}
-                        // helperText={interview.interviewTime === "" ? "Time is required" : ""}
                       />
                       </div>
-
                     </Tooltip>
                   </Grid>
                 </Grid>

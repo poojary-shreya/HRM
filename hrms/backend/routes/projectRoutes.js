@@ -5,9 +5,9 @@ import {
   createProject,
   updateProject,
   deleteProject,
-  getEmployeesForProjectSelection,
+  getProjectsByTemplate,
   addMemberToProject,
-  removeMemberFromProject
+  removeMemberFromProject,getProjectDetails,createProjectType
 } from "../controller/projectController.js";
 
 const router = express.Router();
@@ -16,12 +16,16 @@ const router = express.Router();
 router.get("/", getAllProjects);
 router.get("/:id", getProjectById);
 router.post("/", createProject);
+router.post("/type", createProjectType);
 router.put("/:id", updateProject);
 router.delete("/:id", deleteProject);
+router.get('/projectname/:id',getProjectDetails);
 
-// Team member management routes
-router.get("/employees/selection", getEmployeesForProjectSelection);
-router.post("/members", addMemberToProject);
+// Get projects by template
+router.get("/template/:template", getProjectsByTemplate);
+
+// Project team management routes
+router.post("/:projectId/members", addMemberToProject);
 router.delete("/:projectId/members/:employeeId", removeMemberFromProject);
 
 export default router;

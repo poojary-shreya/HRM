@@ -18,7 +18,8 @@ import {
   Divider,
   CircularProgress,
   Snackbar,
-  Alert
+  Alert,
+  Tooltip
 } from '@mui/material';
 import { 
   MoreVert as MoreVertIcon, 
@@ -27,10 +28,12 @@ import {
   Search as SearchIcon,
   FilterList as FilterListIcon,
   Sort as SortIcon,
-  Add as AddIcon
+  Add as AddIcon,
+  SupervisorAccount as ManagerIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import ProjectDetailsDialog from './viewproject';
 
 const AllProjects = () => {
   const navigate = useNavigate();
@@ -45,6 +48,8 @@ const AllProjects = () => {
   const [sortAnchorEl, setSortAnchorEl] = useState(null);
   const [filterType, setFilterType] = useState('all');
   const [sortType, setSortType] = useState('name-asc');
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -57,7 +62,7 @@ const AllProjects = () => {
       try {
         setLoading(true);
         const response = await axios.get('http://localhost:5000/api/projects');
-        if (response.data.success) {
+        if (response.data.status === "success") {
           setProjects(response.data.data);
           
           // Load starred projects from local storage
@@ -81,22 +86,28 @@ const AllProjects = () => {
   // Format project data for display
   const formatProjects = (projectsData) => {
     return projectsData.map(project => ({
-      id: project.id,
-      name: project.basicInfo.name,
-      key: project.basicInfo.key,
-      type: project.basicInfo.type,
-      description: project.basicInfo.description,
-      lead: project.team.lead ? `${project.team.lead.name}` : 'Unassigned',
+      id: project.project_id,
+      name: project.name,
+      key: project.key,
+      type: project.projectType,
+      description: project.description,
+      lead: project.projectLead ? project.projectLead.name : 'Unassigned',
       leadAvatar: '/api/placeholder/40/40',
-      starred: starredProjects.has(project.id),
-      status: project.status,
-      lastUpdated: formatDate(project.updatedAt),
-      teamMembers: project.team.members || []
+      projectManagers: project.projectManagers ? project.projectManagers.map(pm => pm.name).join(', ') : '',
+      starred: starredProjects.has(project.project_id),
+      status: project.status || 'Not Started',
+      lastUpdated: formatDate(project.updatedAt || project.createdAt),
+      teamMembers: project.teamMembers ? project.teamMembers.length : 0,
+      startDate: project.startDate,
+      endDate: project.endDate,
+      budget: project.budget
     }));
   };
   
   // Format date as "X days/hours ago"
   const formatDate = (dateString) => {
+    if (!dateString) return 'Recently';
+    
     const date = new Date(dateString);
     const now = new Date();
     const diffTime = Math.abs(now - date);
@@ -164,12 +175,31 @@ const AllProjects = () => {
     setSearchText(event.target.value);
   };
   
+  // Handle viewing project details
+  const handleViewProject = (projectId) => {
+    console.log("Opening dialog for project:", projectId);
+    setSelectedProjectId(projectId);
+    setDialogOpen(true);
+  };
+
+  // Handler for closing project details dialog
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+  };
+  
+  // Navigate to edit project page
+  const handleEditProject = (project) => {
+    // Store project data in localStorage to pass to the edit form
+    localStorage.setItem('editProject', JSON.stringify(project));
+    navigate(`/create-project?edit=true&id=${project.id}`);
+  };
+  
   // Delete a project
   const handleDeleteProject = async (id) => {
     try {
       const response = await axios.delete(`http://localhost:5000/api/projects/${id}`);
-      if (response.data.success) {
-        setProjects(projects.filter(project => project.id !== id));
+      if (response.data.status === "success") {
+        setProjects(projects.filter(project => project.project_id !== id));
         setSnackbar({
           open: true,
           message: 'Project deleted successfully',
@@ -281,7 +311,7 @@ const AllProjects = () => {
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">All Projects</Typography>
+        <Typography variant="h4" component="h1" gutterBottom align="center" fontWeight='bold'>All Projects</Typography>
         <Button 
           variant="contained" 
           color="primary" 
@@ -325,8 +355,8 @@ const AllProjects = () => {
               onClose={() => handleFilterMenuClose()}
             >
               <MenuItem onClick={() => handleFilterMenuClose('all')}>All Projects</MenuItem>
-              <MenuItem onClick={() => handleFilterMenuClose('starred')}>Starred Projects</MenuItem>
-              <Divider />
+            
+           
               <MenuItem onClick={() => handleFilterMenuClose('active')}>Active</MenuItem>
               <MenuItem onClick={() => handleFilterMenuClose('planning')}>Planning</MenuItem>
               <MenuItem onClick={() => handleFilterMenuClose('completed')}>Completed</MenuItem>
@@ -376,12 +406,9 @@ const AllProjects = () => {
                       </Box>
                     </Box>
                     
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Avatar src={project.leadAvatar} sx={{ width: 24, height: 24, mr: 1 }} />
-                      <Typography variant="body2">
-                        Lead: {project.lead}
-                      </Typography>
-                    </Box>
+                  
+                    
+                   
                     
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Chip 
@@ -398,15 +425,9 @@ const AllProjects = () => {
                     <Button 
                       size="small" 
                       color="primary"
-                      onClick={() => navigate(`/projects/${project.id}`)}
+                      onClick={() => navigate(`/dash`)}
                     >
                       View Board
-                    </Button>
-                    <Button 
-                      size="small"
-                      onClick={() => navigate(`/projects/${project.id}/settings`)}
-                    >
-                      Settings
                     </Button>
                   </CardActions>
                 </Card>
@@ -423,11 +444,11 @@ const AllProjects = () => {
       >
         <MenuItem onClick={() => {
           handleMenuClose();
-          if (menuProject) navigate(`/projects/${menuProject.id}`);
+          if (menuProject) handleViewProject(menuProject.id);
         }}>View details</MenuItem>
         <MenuItem onClick={() => {
           handleMenuClose();
-          if (menuProject) navigate(`/projects/${menuProject.id}/settings`);
+          if (menuProject) handleEditProject(menuProject);
         }}>Edit</MenuItem>
        
         <Divider />
@@ -440,6 +461,13 @@ const AllProjects = () => {
           Delete
         </MenuItem>
       </Menu>
+      
+      {/* Project Details Dialog */}
+      <ProjectDetailsDialog 
+        open={dialogOpen}
+        handleClose={handleCloseDialog}
+        projectId={selectedProjectId}
+      />
       
       <Snackbar 
         open={snackbar.open} 

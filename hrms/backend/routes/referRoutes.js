@@ -4,7 +4,7 @@ import {
   createReferral,
   getAllReferrals,
   getReferrerInfo,
-
+  quickResumeUpload
 } from '../controller/referController.js';
 
 const router = express.Router();
@@ -12,6 +12,7 @@ const router = express.Router();
 // Create a new referral with resume upload
 router.post('/create', upload.single('resume'), createReferral);
 router.get('/referrer/info', getReferrerInfo);
+router.post('/quick-upload', upload.single('resume'), quickResumeUpload);
 // Get all referrals
 router.get('/', getAllReferrals);
 router.get('/debug-session', (req, res) => {

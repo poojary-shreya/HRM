@@ -2,11 +2,11 @@ import { DataTypes } from "sequelize";
 import { sequelize } from "../config/db.js";
 import Employee from "./addpersonalmodel.js";
 
-const Project = sequelize.define("Project", {
+const Project = sequelize.define('Project', {
   project_id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
   },
   name: {
     type: DataTypes.STRING,
@@ -15,12 +15,9 @@ const Project = sequelize.define("Project", {
   key: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true,
-    validate: {
-      is: /^[A-Z0-9]{2,10}$/
-    }
+    unique: true
   },
-  type: {
+  projectType: {
     type: DataTypes.STRING,
     allowNull: false
   },
@@ -28,39 +25,63 @@ const Project = sequelize.define("Project", {
     type: DataTypes.TEXT,
     allowNull: true
   },
- 
   lead_id: {
     type: DataTypes.STRING,
-    allowNull: false,
     references: {
       model: Employee,
-      key: "employee_id"
+      key: 'employee_id'
     }
   },
+  
   start_date: {
     type: DataTypes.DATEONLY,
-    allowNull: true
+    allowNull: false
   },
   end_date: {
     type: DataTypes.DATEONLY,
-    allowNull: true
+    allowNull: false
+  },
+  budget: {
+    type: DataTypes.DECIMAL(15, 2),
+    allowNull: false
+  },
+  template: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    validate: {
+      isIn: [['kanban', 'scrum', 'business']]
+    }
   },
   status: {
     type: DataTypes.STRING,
-    defaultValue: "Active",
+    allowNull: false,
     validate: {
-      isIn: [["Active", "Completed", "On Hold", "Cancelled", "Not Started"]]
+      isIn: [['Active', 'Completed', 'On Hold', 'Cancelled', 'In Progress']]
     }
+  },
+  completionPercentage: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0,
+    validate: {
+      min: 0,
+      max: 100
+    }
+  },
+  notes: {
+    type: DataTypes.TEXT,
+    allowNull: true
   }
 }, {
-  tableName: "projects",
-  timestamps: true
+  tableName: 'projects',
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
 });
 
-// Define the direct association with the project lead
-Project.belongsTo(Employee, {
-  foreignKey: "lead_id",
-  as: "projectLead"
+Project.belongsTo(Employee, { 
+  foreignKey: 'lead_id', 
+  as: 'lead'  
 });
-
 export default Project;
+

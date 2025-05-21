@@ -7,10 +7,12 @@ import {
   Button,
   MenuItem,
   Alert,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 const Login = () => {
   const [searchParams] = useSearchParams();
@@ -21,6 +23,11 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleClickShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,16 +37,13 @@ const Login = () => {
       const response = await axios.post('http://localhost:5000/api/user/login', {
         email,
         password,
-        
-      },{withCredentials: true,});
+      }, { withCredentials: true });
 
-      const { token ,user} = response.data;
+      const { token, user } = response.data;
       localStorage.setItem('token', token);
       localStorage.setItem('role', user.role);
-
-
+      
       navigate('/');
-
     } catch (err) {
       setError('Login failed. Please check your credentials.');
       console.error(err);
@@ -73,28 +77,28 @@ const Login = () => {
           />
           <TextField
             label="Password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             variant="outlined"
             fullWidth
             margin="normal"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle password visibility"
+                    onClick={handleClickShowPassword}
+                    edge="end"
+                    
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
-          <TextField
-            label="Role"
-            select
-            variant="outlined"
-            fullWidth
-            margin="normal"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            required
-          >
-            <MenuItem value="employee">Employee</MenuItem>
-            <MenuItem value="manager">Manager</MenuItem>
-            <MenuItem value="hr">HR/FinanceTeam</MenuItem>
-          </TextField>
           <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
             <Button
               variant="contained"
@@ -102,12 +106,10 @@ const Login = () => {
               sx={{
                 mt: 2,
                 width: "120px",
-              
               }}
             >
               Login
             </Button>
-
           </Box>
           <Typography
             variant="body2"
@@ -119,9 +121,8 @@ const Login = () => {
           </Typography>
           <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
             <Button
-
               variant="outlined"
-              color="black"
+              color="primary"
               sx={{ mt: 2, width: "120px" }}
               onClick={() => navigate("/")}
             >

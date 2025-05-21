@@ -10,40 +10,32 @@ import {
   Button,
   Chip,
   Avatar,
-  IconButton,
   TextField,
   InputAdornment,
   Menu,
   MenuItem,
+  IconButton,
   Divider,
-  Badge,
-  Tooltip,
   AvatarGroup,
-  CircularProgress,
+  Tooltip,
+  Snackbar,
   Alert,
-  Snackbar
+  CircularProgress
 } from '@mui/material';
 import { 
-  MoreVert as MoreVertIcon, 
-  Star as StarIcon,
   StarBorder as StarBorderIcon,
+  Star as StarIcon,
   Search as SearchIcon,
-  FilterList as FilterListIcon,
-  Sort as SortIcon,
-  Add as AddIcon,
-  PeopleAlt as PeopleAltIcon,
-  Assignment as AssignmentIcon,
-  Today as TodayIcon,
-  Notifications as NotificationsIcon,
-  ArrowUpward as ArrowUpwardIcon,
-  ArrowDownward as ArrowDownwardIcon,
+  MoreVert as MoreVertIcon,
+  TodayOutlined as TodayIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+// Real API URL - update this with your actual backend endpoint
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-const ActiveProjects = () => {
+const EnhancedActiveProjects = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,67 +43,71 @@ const ActiveProjects = () => {
   const [searchText, setSearchText] = useState('');
   const [anchorEl, setAnchorEl] = useState(null);
   const [projectMenuId, setProjectMenuId] = useState(null);
-  const [filterAnchorEl, setFilterAnchorEl] = useState(null);
-  const [sortAnchorEl, setSortAnchorEl] = useState(null);
-  const [sortBy, setSortBy] = useState('updatedAt');
-  const [sortDirection, setSortDirection] = useState('desc');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success'
   });
-  
-  // Fetch projects from API
+
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get(`${API_URL}/projects`);
-        
-        if (response.data.success) {
-          // Transform the backend data into the format expected by our component
-          const transformedProjects = response.data.data.map(project => ({
-            id: project.id,
-            name: project.basicInfo.name,
-            key: project.basicInfo.key,
-            type: project.basicInfo.type,
-            lead: project.team.lead ? project.team.lead.name : 'Not Assigned',
-            leadAvatar: '/api/placeholder/40/40',
-            starred: false, // This could be stored in user preferences
-            status: project.status,
-            lastUpdated: formatLastUpdated(project.updatedAt),
-            progress: calculateProgress(project), // You may need to calculate this based on tasks
-            dueDate: project.timeline.endDate,
-            tasks: {
-              total: 0, // These would need to come from a tasks API
-              completed: 0
-            },
-            team: project.team.members.map(member => ({
-              id: member.id,
-              name: member.name,
-              avatar: '/api/placeholder/40/40'
-            })),
-            priority: determinePriority(project) // This function would determine priority
-          }));
-          
-          setProjects(transformedProjects);
-        } else {
-          setError('Failed to fetch projects');
-        }
-      } catch (err) {
-        setError(err.message || 'Error fetching projects');
-        console.error('Error fetching projects:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchProjects();
   }, []);
-  
+
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_URL}/projects`);
+      
+      if (response.data.status === "success") {
+        // Transform the backend data into the format expected by our component
+        const transformedProjects = response.data.data.map(project => ({
+          id: project.project_id, // Use project_id as the project id
+          name: project.name || 'Unnamed Project',
+          key: project.key || 'KEY',
+          type: project.projectType || 'General',
+          lead: project.projectLead ? project.projectLead.name : 'Not Assigned',
+          leadAvatar: project.projectLead?.avatar || null,
+          starred: false, // This could be stored in user preferences
+          status: project.status || 'Planning',
+          lastUpdated: formatLastUpdated(project.updatedAt),
+          progress: calculateProgress(project), // Calculate based on tasks
+          dueDate: project.end_date,
+          tasks: {
+            total: project.tasks?.length || 0,
+            completed: project.tasks?.filter(task => task.status === 'Completed').length || 0
+          },
+          team: project.team?.members?.map(member => ({
+            id: member.employee_id,
+            name: member.name,
+            avatar: member.avatar || null
+          })) || [],
+          priority: determinePriority(project), // Determine priority based on project data
+          avatar_bg: getAvatarColor(project.key) // Get consistent color based on project key
+        }));
+        
+        setProjects(transformedProjects);
+      } else {
+        setError('Failed to fetch projects');
+        throw new Error('API returned unsuccessful status');
+      }
+    } catch (err) {
+      setError(`Error fetching projects: ${err.message}`);
+      console.error('Error fetching projects:', err);
+      setSnackbar({
+        open: true,
+        message: `Failed to load projects. Please try again later.`,
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Helper function to format the last updated date
   const formatLastUpdated = (dateString) => {
+    if (!dateString) return 'Unknown';
+    
     const now = new Date();
     const updatedDate = new Date(dateString);
     const diffTime = Math.abs(now - updatedDate);
@@ -129,22 +125,59 @@ const ActiveProjects = () => {
     }
   };
   
-  // Helper function to calculate progress (placeholder)
+  // Helper function to calculate progress
   const calculateProgress = (project) => {
-    // This would ideally come from task data
-    // For now, let's generate a random progress value
-    return Math.floor((project.id * 17) % 100);
+    // If project has tasks, calculate progress based on completed tasks
+    if (project.tasks && project.tasks.length > 0) {
+      const completedTasks = project.tasks.filter(task => task.status === 'Completed').length;
+      return Math.floor((completedTasks / project.tasks.length) * 100);
+    }
+    
+    // Fallback to a value based on project id
+    return Math.floor((parseInt(project.project_id || '0', 10) % 100) + 1);
   };
   
-  // Helper function to determine priority (placeholder)
+  // Helper function to determine priority
   const determinePriority = (project) => {
-    // This would ideally be stored in the project data
-    // For now, let's assign priorities in a round-robin fashion
+    // Check if project already has a priority field
+    if (project.priority) return project.priority;
+    
+    // Assign priorities based on project attributes
+    if (project.tasks?.some(task => task.label === 'Critical')) return 'High';
+    if (project.end_date && new Date(project.end_date) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) return 'High';
+    
+    // For now, assign in a round-robin fashion
     const priorities = ['High', 'Medium', 'Low'];
-    return priorities[project.id % 3];
+    const hash = project.project_id ? parseInt(project.project_id, 10) : 0;
+    return priorities[hash % 3];
   };
   
+  // Helper function to get consistent avatar color based on project key
+  const getAvatarColor = (key) => {
+    const colors = [
+      '#2196F3', // Blue
+      '#4CAF50', // Green
+      '#FF9800', // Orange
+      '#E91E63', // Pink
+      '#9C27B0', // Purple
+      '#00BCD4', // Cyan
+      '#F44336', // Red
+      '#3F51B5'  // Indigo
+    ];
+    
+    let hash = 0;
+    if (!key) return colors[0];
+    
+    // Simple hash function to get consistent color
+    for (let i = 0; i < key.length; i++) {
+      hash = key.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    return colors[Math.abs(hash) % colors.length];
+  };
+
   const handleMenuOpen = (event, projectId) => {
+    event.stopPropagation();
     setAnchorEl(event.currentTarget);
     setProjectMenuId(projectId);
   };
@@ -154,194 +187,102 @@ const ActiveProjects = () => {
     setProjectMenuId(null);
   };
   
-  const handleFilterMenuOpen = (event) => {
-    setFilterAnchorEl(event.currentTarget);
-  };
-  
-  const handleFilterMenuClose = () => {
-    setFilterAnchorEl(null);
-  };
-  
-  const handleSortMenuOpen = (event) => {
-    setSortAnchorEl(event.currentTarget);
-  };
-  
-  const handleSortMenuClose = () => {
-    setSortAnchorEl(null);
-  };
-  
-  const toggleStar = (id) => {
-    setProjects(projects.map(project => 
-      project.id === id ? {...project, starred: !project.starred} : project
-    ));
-  };
-  
-  const handleSearch = (event) => {
-    setSearchText(event.target.value);
-  };
-
-  const handleViewProject = (projectId) => {
-    navigate(`/projects/${projectId}`);
-  };
-
-  const handleSortChange = (sortKey) => {
-    if (sortBy === sortKey) {
-      // Toggle direction if clicking the same sort field
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(sortKey);
-      setSortDirection('asc');
-    }
-    handleSortMenuClose();
-  };
-
-  const handleFilterChange = (status) => {
-    setFilterStatus(status);
-    handleFilterMenuClose();
-  };
-  
-  const handleArchiveProject = async (projectId) => {
+  const toggleStar = async (id) => {
     try {
-      const project = projects.find(p => p.id === projectId);
+      const project = Array.isArray(projects) ? projects.find(p => p.id === id) : null;
+      if (!project) return;
       
-      // Update project status to 'Archived'
-      await axios.put(`${API_URL}/projects/${projectId}`, {
-        status: 'Archived'
+      const updatedStarStatus = !project.starred;
+      
+      // Optimistic update
+      setProjects(projects.map(project => 
+        project.id === id ? {...project, starred: updatedStarStatus} : project
+      ));
+      
+      // Send update to server
+      const response = await axios.put(`${API_URL}/projects/${id}/star`, {
+        starred: updatedStarStatus
       });
       
-      // Remove project from list
-      setProjects(projects.filter(p => p.id !== projectId));
-      
-      // Show success message
-      setSnackbar({
-        open: true,
-        message: `Project "${project.name}" archived successfully`,
-        severity: 'success'
-      });
-      
-      handleMenuClose();
+      if (!response.data.status === "success") {
+        throw new Error('Failed to update star status');
+      }
     } catch (err) {
-      console.error('Error archiving project:', err);
+      console.error('Error updating star status:', err);
+      // Revert the optimistic update
+      if (Array.isArray(projects)) {
+        setProjects(projects.map(project => 
+          project.id === id ? {...project, starred: !project.starred} : project
+        ));
+      }
       setSnackbar({
         open: true,
-        message: 'Failed to archive project',
+        message: 'Failed to update star status. Please try again.',
         severity: 'error'
       });
     }
   };
   
+  const handleSearch = (event) => {
+    setSearchText(event.target.value);
+  };
+  
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
   };
-  
-  // Filter projects based on search text and status filter
-  const filteredProjects = projects.filter(project => {
+
+  // Filter projects based on search text
+  const filteredProjects = Array.isArray(projects) ? projects.filter(project => {
     const matchesSearch = 
-      project.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      project.key.toLowerCase().includes(searchText.toLowerCase());
+      project.name?.toLowerCase().includes(searchText.toLowerCase()) ||
+      project.key?.toLowerCase().includes(searchText.toLowerCase());
     
-    const matchesStatus = 
-      filterStatus === 'all' || 
-      project.status.toLowerCase() === filterStatus.toLowerCase();
-    
-    return matchesSearch && matchesStatus;
-  });
+    return matchesSearch;
+  }) : [];
 
-  // Sort projects
-  const sortedProjects = [...filteredProjects].sort((a, b) => {
-    let comparison = 0;
+  // Handle project selection
+  const handleProjectSelect = (projectId) => {
+    setSelectedProjectId(projectId);
     
-    switch(sortBy) {
-      case 'name':
-        comparison = a.name.localeCompare(b.name);
-        break;
-      case 'dueDate':
-        comparison = new Date(a.dueDate) - new Date(b.dueDate);
-        break;
-      case 'progress':
-        comparison = a.progress - b.progress;
-        break;
-      case 'priority':
-        const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
-        comparison = priorityOrder[a.priority] - priorityOrder[b.priority];
-        break;
-      case 'updatedAt':
-      default:
-        // Compare by lastUpdated, which is a string description
-        // For real app, you'd want to sort by actual date timestamps
-        comparison = a.lastUpdated.localeCompare(b.lastUpdated);
-        break;
-    }
+    // Here we would typically update a context or Redux store
+    // to show this project in the sidebar
+    localStorage.setItem('selectedProject', projectId);
     
-    return sortDirection === 'asc' ? comparison : -comparison;
-  });
-  
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'Active': return 'primary';
-      case 'Planning': return 'info';
-      case 'Completed': return 'success';
-      case 'On Hold': return 'warning';
-      default: return 'default';
-    }
+    // Navigate to the project detail page 
+    navigate(`/project/${projectId}/roadmap`);
+    
+    // Show confirmation
+    setSnackbar({
+      open: true,
+      message: `Project selected. Check sidebar for options.`,
+      severity: 'success'
+    });
   };
 
-  const getPriorityColor = (priority) => {
-    switch(priority) {
-      case 'High': return '#f44336';
-      case 'Medium': return '#ff9800';
-      case 'Low': return '#2196f3';
-      default: return '#757575';
-    }
-  };
-
-  const renderProgressBar = (progress) => {
-    const getProgressColor = (value) => {
-      if (value < 30) return '#ff9800';
-      if (value < 70) return '#2196f3';
-      return '#4caf50';
-    };
-
-    return (
-      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, mb: 2 }}>
-        <Box
-          sx={{
-            width: '100%',
-            backgroundColor: '#e0e0e0',
-            borderRadius: 1,
-            mr: 1
-          }}
-        >
-          <Box
-            sx={{
-              width: `${progress}%`,
-              height: 8,
-              backgroundColor: getProgressColor(progress),
-              borderRadius: 1,
-            }}
-          />
-        </Box>
-        <Typography variant="body2" color="textSecondary">{progress}%</Typography>
-      </Box>
-    );
-  };
-  
-  // Show loading state
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress />
+        <Typography variant="h6" sx={{ ml: 2 }}>
+          Loading projects...
+        </Typography>
       </Box>
     );
   }
-  
-  // Show error state
-  if (error) {
+
+  if (error && (!Array.isArray(projects) || projects.length === 0)) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error">
+        <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
+        <Button 
+          variant="contained" 
+          onClick={fetchProjects}
+          startIcon={<SearchIcon />}
+        >
+          Retry
+        </Button>
       </Box>
     );
   }
@@ -349,15 +290,7 @@ const ActiveProjects = () => {
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">Active Projects</Typography>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/create-project')}
-        >
-          Create Project
-        </Button>
+        <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">Active Projects</Typography>
       </Box>
       
       <Paper sx={{ p: 2, mb: 3 }}>
@@ -372,105 +305,43 @@ const ActiveProjects = () => {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon />
+                  <SearchIcon size={20} />
                 </InputAdornment>
               ),
             }}
           />
-          
-          <Box>
-            <Button 
-              variant="outlined" 
-              startIcon={<FilterListIcon />}
-              onClick={handleFilterMenuOpen}
-              sx={{ mr: 1 }}
-            >
-              Filter
-              {filterStatus !== 'all' && (
-                <Badge 
-                  color="primary" 
-                  variant="dot" 
-                  sx={{ ml: 1 }}
-                />
-              )}
-            </Button>
-            <Menu
-              anchorEl={filterAnchorEl}
-              open={Boolean(filterAnchorEl)}
-              onClose={handleFilterMenuClose}
-            >
-              <MenuItem 
-                onClick={() => handleFilterChange('all')}
-                selected={filterStatus === 'all'}
-              >
-                All Projects
-              </MenuItem>
-              <MenuItem 
-                onClick={() => handleFilterChange('active')}
-                selected={filterStatus === 'active'}
-              >
-                Active
-              </MenuItem>
-              <MenuItem 
-                onClick={() => handleFilterChange('planning')}
-                selected={filterStatus === 'planning'}
-              >
-                Planning
-              </MenuItem>
-              <MenuItem 
-                onClick={() => handleFilterChange('completed')}
-                selected={filterStatus === 'completed'}
-              >
-                Completed
-              </MenuItem>
-              <MenuItem 
-                onClick={() => handleFilterChange('on hold')}
-                selected={filterStatus === 'on hold'}
-              >
-                On Hold
-              </MenuItem>
-            </Menu>
-           
-          
-            
-          </Box>
         </Box>
        
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Typography variant="body2" color="textSecondary" sx={{ mr: 1 }}>
-            Showing {sortedProjects.length} of {projects.length} projects
+          <Typography variant="body2" color="gray" sx={{ mr: 1 }}>
+            Showing {filteredProjects.length} of {Array.isArray(projects) ? projects.length : 0} projects
           </Typography>
-          {filterStatus !== 'all' && (
-            <Chip 
-              label={`Status: ${filterStatus}`}
-              size="small"
-              onDelete={() => setFilterStatus('all')}
-              sx={{ mr: 1 }}
-            />
-          )}
-          {sortBy !== 'updatedAt' && (
-            <Chip 
-              label={`Sorted by: ${sortBy}`}
-              size="small"
-              onDelete={() => {
-                setSortBy('updatedAt');
-                setSortDirection('desc');
-              }}
-            />
-          )}
         </Box>
       </Paper>
      
       <Grid container spacing={3}>
-        {sortedProjects.map((project) => (
+        {filteredProjects.map((project) => (
           <Grid item xs={12} md={6} lg={4} key={project.id}>
-            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Card 
+              sx={{ 
+                height: '100%', 
+                display: 'flex', 
+                flexDirection: 'column',
+                cursor: 'pointer',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+                }
+              }}
+              onClick={() => handleProjectSelect(project.id)}
+            >
               <CardContent sx={{ flexGrow: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <Avatar 
                       sx={{ 
-                        bgcolor: getPriorityColor(project.priority),
+                        bgcolor: project.avatar_bg || '#2196F3',
                         width: 36, 
                         height: 36,
                         mr: 1.5,
@@ -483,7 +354,7 @@ const ActiveProjects = () => {
                       <Typography variant="h6" component="h2">
                         {project.name}
                       </Typography>
-                      <Typography variant="body2" color="textSecondary">
+                      <Typography variant="body2" color="gray">
                         {project.type}
                       </Typography>
                     </Box>
@@ -491,11 +362,14 @@ const ActiveProjects = () => {
                   <Box sx={{ display: 'flex' }}>
                     <IconButton 
                       size="small" 
-                      onClick={() => toggleStar(project.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleStar(project.id);
+                      }}
                       sx={{ mr: 0.5 }}
                     >
                       {project.starred ? 
-                        <StarIcon fontSize="small" color="warning" /> : 
+                        <StarIcon fontSize="small" sx={{ color: "#FFC107" }} /> : 
                         <StarBorderIcon fontSize="small" />
                       }
                     </IconButton>
@@ -515,85 +389,70 @@ const ActiveProjects = () => {
                     <Chip 
                       label={project.status} 
                       size="small"
-                      color={getStatusColor(project.status)}
+                      color="primary"
+                      sx={{ height: 24 }}
                     />
-                    <Tooltip title={`Priority: ${project.priority}`}>
-                      <Box 
-                        sx={{ 
-                          width: 12, 
-                          height: 12, 
-                          borderRadius: '50%', 
-                          bgcolor: getPriorityColor(project.priority),
-                        }} 
+                    {project.priority && (
+                      <Chip 
+                        label={project.priority} 
+                        size="small"
+                        color={
+                          project.priority === 'High' ? 'error' : 
+                          project.priority === 'Medium' ? 'warning' : 'success'
+                        }
+                        variant="outlined"
+                        sx={{ height: 24 }}
                       />
-                    </Tooltip>
+                    )}
                   </Box>
                  
-                  {renderProgressBar(project.progress)}
+                  <Box sx={{ 
+                    width: '100%', 
+                    height: 8, 
+                    bgcolor: '#f0f0f0', 
+                    borderRadius: 4,
+                    mb: 2
+                  }}>
+                    <Box 
+                      sx={{ 
+                        width: `${project.progress}%`, 
+                        height: '100%', 
+                        bgcolor: 
+                          project.progress < 30 ? '#ff9800' : 
+                          project.progress < 70 ? '#2196f3' : 
+                          '#4caf50', 
+                        borderRadius: 4 
+                      }} 
+                    />
+                  </Box>
                  
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <AssignmentIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />
-                      <Typography variant="body2" color="textSecondary">
-                        {project.tasks.completed}/{project.tasks.total} tasks
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <TodayIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />
-                      <Typography variant="body2" color="textSecondary">
+                      <TodayIcon fontSize="small" sx={{ mr: 0.5, color: 'gray' }} />
+                      <Typography variant="body2" color="gray">
                         {project.dueDate ? `Due ${new Date(project.dueDate).toLocaleDateString()}` : 'No due date'}
                       </Typography>
                     </Box>
+                    
                   </Box>
                 </Box>
                
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Tooltip title={`Lead: ${project.lead}`}>
-                      <Avatar 
-                        src={project.leadAvatar} 
-                        sx={{ width: 24, height: 24, mr: 1 }}
-                      />
-                    </Tooltip>
-                    <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 24, height: 24 } }}>
-                      {project.team.map(member => (
-                        <Tooltip key={member.id} title={member.name}>
-                          <Avatar 
-                            src={member.avatar} 
-                            sx={{ width: 24, height: 24 }}
-                          />
-                        </Tooltip>
-                      ))}
-                    </AvatarGroup>
-                  </Box>
-                  <Typography variant="caption" color="textSecondary">
-                    Updated {project.lastUpdated}
-                  </Typography>
-                </Box>
+               
               </CardContent>
              
-              <CardActions>
-                <Button 
-                  size="small" 
-                  variant="text" 
-                  onClick={() => handleViewProject(project.id)}
-                  sx={{ ml: 'auto' }}
-                >
-                  View Details
-                </Button>
-              </CardActions>
+            
             </Card>
           </Grid>
         ))}
       </Grid>
      
-      {sortedProjects.length === 0 && (
+      {filteredProjects.length === 0 && !loading && (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
-          <Typography variant="h6" color="textSecondary">
+          <Typography variant="h6" color="gray">
             No projects found matching your criteria
           </Typography>
-          <Typography variant="body2" color="textSecondary">
-            Try changing your search or filter settings
+          <Typography variant="body2" color="gray">
+            Try changing your search settings or check back later
           </Typography>
         </Paper>
       )}
@@ -604,18 +463,17 @@ const ActiveProjects = () => {
         onClose={handleMenuClose}
       >
         <MenuItem onClick={() => {
-          handleViewProject(projectMenuId);
+          handleProjectSelect(projectMenuId);
           handleMenuClose();
         }}>
           View details
         </MenuItem>
         <MenuItem onClick={() => {
-          navigate(`/projects/${projectMenuId}/edit`);
+          navigate(`/create-project?edit=true&id=${projectMenuId}`);
           handleMenuClose();
         }}>
           Edit project
         </MenuItem>
-      
       </Menu>
       
       <Snackbar
@@ -635,4 +493,4 @@ const ActiveProjects = () => {
   );
 };
 
-export default ActiveProjects;
+export default EnhancedActiveProjects;

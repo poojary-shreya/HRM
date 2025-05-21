@@ -10,12 +10,12 @@ import {
   Collapse,
   Divider,
   Badge,
-  Typography
+  Typography,
+  Tooltip
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   ChevronLeft,
-  Dashboard as DashboardIcon,
   Work as RecruitmentIcon,
   People as PeopleIcon,
   MonetizationOn as PayrollIcon,
@@ -30,43 +30,41 @@ import {
   Visibility as ViewIcon,
   KeyboardArrowDown,
   KeyboardArrowUp,
-  Search
+  Search,
+  Assignment as AssessmentIcon
 } from '@mui/icons-material';
-import {
-  Assignment as AssignmentIcon,
-  Group as GroupIcon,
-  Settings as SettingsIcon,
-  Description as DescriptionIcon,
-  BarChart as BarChartIcon,
-  ExpandLess,
-  ExpandMore,
-} from '@mui/icons-material';
+
 import PaymentsIcon from '@mui/icons-material/Payments';
-import { Link, useLocation } from 'react-router-dom';
-import ChecklistIcon from '@mui/icons-material/Checklist';
-import { CalendarIcon } from '@mui/x-date-pickers';
-import ResourceIcon from '@mui/icons-material/Assessment'; // or another appropriate icon
-import BudgetIcon from '@mui/icons-material/AccountBalance'; // or Money, Payments, etc.
-import RiskIcon from '@mui/icons-material/Warning'; // or Report, Error, etc.
-import SecurityIcon from '@mui/icons-material/Security';
-import SprintIcon from '@mui/icons-material/DirectionsRun';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import GroupIcon from '@mui/icons-material/Group';
+import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
+import BugReportIcon from '@mui/icons-material/BugReport';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import SpeedIcon from '@mui/icons-material/Speed';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import SettingsIcon from '@mui/icons-material/Settings';
+import axios from 'axios';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const Sidebar = () => {
   const [open, setOpen] = useState(true);
   const location = useLocation();
+  const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const userRole = localStorage.getItem("role")?.toLowerCase();
   const isLoggedIn = !!token;
   const role = userRole || null;
   const [notifications, setNotifications] = useState([]);
   const [openProjects, setOpenProjects] = useState(false);
-  const [openTasks, setOpenTasks] = useState(false);
-  const [openSprints, setOpenSprints] = useState(false);
-  const [openResources, setOpenResources] = useState(false);
-  const [openBudget, setOpenBudget] = useState(false);
-  const [openReports, setOpenReports] = useState(false);
-
-
+  const [openActiveProjects, setOpenActiveProjects] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedProjectName, setSelectedProjectName] = useState("");
+ 
   const [openMenus, setOpenMenus] = useState({
     recruitment: false,
     employeeManagement: false,
@@ -77,7 +75,204 @@ const Sidebar = () => {
     performance: false,
     training: false,
     projectManagement: false,
+    projects: false,
+    activeProjects: false
   });
+
+  // Fetch project data from API
+  const fetchProjectDetails = async (projectId) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/${projectId}`);
+      if (response.data.status === "success") {
+        return response.data.data;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching project details:", error);
+      return null;
+    }
+  };
+
+  // Effect to handle project selection from URL or localStorage
+  useEffect(() => {
+    const loadProjectData = async () => {
+      // Check if the URL contains a project ID
+      const projectMatch = location.pathname.match(/\/project\/([^/]+)/);
+      
+      if (projectMatch && projectMatch[1]) {
+        const projectId = projectMatch[1];
+        
+        // First, try to get from localStorage
+        try {
+          const storedProject = localStorage.getItem("selectedProject");
+          let projectData = {};
+          
+          try {
+            projectData = JSON.parse(localStorage.getItem("projectData") || "{}");
+          } catch (error) {
+            console.error("Error parsing project data:", error);
+            projectData = {};
+          }
+          
+          // Use the project ID from URL if it exists
+          const currentProjectId = projectId || storedProject;
+          
+          if (currentProjectId) {
+            // First check if we already have this project in localStorage
+            if (projectData[currentProjectId]) {
+              setSelectedProject({
+                id: currentProjectId,
+                name: projectData[currentProjectId].name || `Project ${currentProjectId}`
+              });
+              setSelectedProjectName(projectData[currentProjectId].name || `Project ${currentProjectId}`);
+            } else {
+              // If not in localStorage, fetch from API
+              const projectDetails = await fetchProjectDetails(currentProjectId);
+              
+              if (projectDetails) {
+                // Update with actual project name from database
+                setSelectedProject({
+                  id: currentProjectId,
+                  name: projectDetails.name || `Project ${currentProjectId}`
+                });
+                setSelectedProjectName(projectDetails.name || `Project ${currentProjectId}`);
+                
+                // Update localStorage for future use
+                const newProjectData = { ...projectData };
+                newProjectData[currentProjectId] = {
+                  id: currentProjectId,
+                  name: projectDetails.name,
+                  // Add other relevant project details as needed
+                };
+                localStorage.setItem("projectData", JSON.stringify(newProjectData));
+              } else {
+                // Fallback if API call fails
+                setSelectedProject({
+                  id: currentProjectId,
+                  name: `Project ${currentProjectId}`
+                });
+                setSelectedProjectName(`Project ${currentProjectId}`);
+              }
+            }
+            
+            // Auto-expand the menus when a project is selected
+            setOpenMenus(prev => ({
+              ...prev,
+              projectManagement: true,
+              projects: true,
+              activeProjects: true,
+              [`project-${currentProjectId}`]: true  // Ensure the project submenu is open
+            }));
+          }
+        } catch (error) {
+          console.error("Error handling project selection:", error);
+          
+          // Attempt to fetch from API as fallback
+          const projectDetails = await fetchProjectDetails(projectId);
+          
+          if (projectDetails) {
+            setSelectedProject({
+              id: projectId,
+              name: projectDetails.name || `Project ${projectId}`
+            });
+            setSelectedProjectName(projectDetails.name || `Project ${projectId}`);
+          } else {
+            setSelectedProject({
+              id: projectId,
+              name: `Project ${projectId}`
+            });
+            setSelectedProjectName(`Project ${projectId}`);
+          }
+          
+          // Auto-expand the menus when a project is selected
+          setOpenMenus(prev => ({
+            ...prev,
+            projectManagement: true,
+            projects: true,
+            activeProjects: true,
+            [`project-${projectId}`]: true  // Ensure the project submenu is open
+          }));
+        }
+      } else {
+        // No project in URL, but check if there's one in localStorage
+        const storedProject = localStorage.getItem("selectedProject");
+        if (storedProject) {
+          try {
+            const projectData = JSON.parse(localStorage.getItem("projectData") || "{}");
+            
+            if (projectData[storedProject]) {
+              setSelectedProject({
+                id: storedProject,
+                name: projectData[storedProject].name || `Project ${storedProject}`
+              });
+              setSelectedProjectName(projectData[storedProject].name || `Project ${storedProject}`);
+            } else {
+              // If not in localStorage, fetch from API
+              const projectDetails = await fetchProjectDetails(storedProject);
+              
+              if (projectDetails) {
+                setSelectedProject({
+                  id: storedProject,
+                  name: projectDetails.name || `Project ${storedProject}`
+                });
+                setSelectedProjectName(projectDetails.name || `Project ${storedProject}`);
+                
+                // Update localStorage for future use
+                const newProjectData = JSON.parse(localStorage.getItem("projectData") || "{}");
+                newProjectData[storedProject] = {
+                  id: storedProject,
+                  name: projectDetails.name,
+                  // Add other relevant project details as needed
+                };
+                localStorage.setItem("projectData", JSON.stringify(newProjectData));
+              } else {
+                // Fallback
+                setSelectedProject({
+                  id: storedProject,
+                  name: `Project ${storedProject}`
+                });
+                setSelectedProjectName(`Project ${storedProject}`);
+              }
+            }
+            
+            // Also expand the necessary menus
+            if (location.pathname.includes('/project/')) {
+              setOpenMenus(prev => ({
+                ...prev,
+                projectManagement: true,
+                projects: true,
+                activeProjects: true,
+                [`project-${storedProject}`]: true
+              }));
+            }
+          } catch (error) {
+            console.error("Error parsing project data:", error);
+            setSelectedProject(null);
+          }
+        } else {
+          setSelectedProject(null);
+          setSelectedProjectName("");
+        }
+      }
+    };
+    
+    loadProjectData();
+  }, [location.pathname]);
+
+  const handleMenuToggle = (menu) => {
+    setOpenMenus(prev => ({
+      ...prev,
+      [menu]: !prev[menu]
+    }));
+  };
+  
+  // Handle clicking on Active Projects menu item
+  const handleActiveProjectsClick = () => {
+    // Toggle the active projects submenu
+    handleMenuToggle('activeProjects');
+    // Navigate to active projects page
+    navigate('/active-projects');
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -99,37 +294,6 @@ const Sidebar = () => {
   const toggleSidebar = () => {
     setOpen(!open);
   };
- 
-  const handleToggleProjects = () => {
-    setOpenProjects(!openProjects);
-  };
-
-  const handleToggleTasks = () => {
-    setOpenTasks(!openTasks);
-  };
-
-  const handleToggleSprints = () => {
-    setOpenSprints(!openSprints);
-  };
-
-  const handleToggleResources = () => {
-    setOpenResources(!openResources);
-  };
-
-  const handleToggleBudget = () => {
-    setOpenBudget(!openBudget);
-  };
-
-  const handleToggleReports = () => {
-    setOpenReports(!openReports);
-  };
-  
-  const handleMenuToggle = (menu) => {
-    setOpenMenus(prev => ({
-      ...prev,
-      [menu]: !prev[menu]
-    }));
-  };
 
   const rolePermissions = {
     hr: ["recruitment", "employeeManagement", "employeeRequest", "payroll", "leave", "attendance", "performance", "training", "projectManagement"],
@@ -143,8 +307,6 @@ const Sidebar = () => {
 
   const getMenuItems = () => {
     const items = [];
-
-   
 
     // Recruitment Section
     if (rolePermissions[role]?.includes("recruitment")) {
@@ -191,7 +353,8 @@ const Sidebar = () => {
             submenu: [
               { name: "Add Personal Details", path: "/addpersonal" },
               { name: "Add Financial Details", path: "/addfinancial" },
-              { name: "Add Roles", path: "/addrole" }
+              { name: "Add Roles", path: "/addrole" },
+              { name: "Contract Employees", path: "/contract"},
             ]
           },
           { 
@@ -201,7 +364,8 @@ const Sidebar = () => {
             submenu: [
               { name: "View Personal Details", path: "/viewpersonal" },
               { name: "View Financial Details", path: "/viewfinancial" },
-              { name: "View Roles", path: "/viewrole" }
+              { name: "View Roles", path: "/viewrole" },
+              { name: "Contract Employee's List", path: "/contractlist"},
             ]
           },
           { 
@@ -375,115 +539,204 @@ const Sidebar = () => {
         ]
       });
     }
-     // Project Management Section
-     if (rolePermissions[role]?.includes("projectManagement")) {
-      items.push({
-        title: "Project Management",
+
+    // Project Management Section
+if (rolePermissions[role]?.includes("projectManagement")) {
+  items.push({
+    title: "Project Management",
+    icon: <AssignmentIcon />,
+    key: "projectManagement",
+    submenu: role === "manager" ? [
+      {
+        name: "Dashboard",
+        path: "/dash",
+        icon: <DashboardIcon />
+      },
+      {
+        name: "Projects",
+        path: null,
         icon: <AssignmentIcon />,
-        key: "projectManagement",
+        key: "projects",
         submenu: [
-          { 
-            name: "Dashboard", 
-            path: "/dash", 
-            icon: <DashboardIcon /> 
-          },
+          { name: "All Projects", path: "/pro" },
+          { name: "Create Project", path: "/create-project" },
           {
-            name: "Projects",
-            path: null,
-            icon: <AssignmentIcon />,
-            submenu: [
-              { name: "All Projects", path: "/pro" },
-              { name: "Create Project", path: "/create-project" },
-              { name: "Active Projects", path: "/active-projects" }
-            ]
+            name: "Active Projects",
+            path: "/active-projects",
+            key: "activeProjects",
+            onClick: handleActiveProjectsClick,
+            submenu: selectedProject ? [
+              {
+                name: selectedProjectName || `Project ${selectedProject.id}`,
+                path: null,
+                key: `project-${selectedProject.id}`,
+                submenu: [
+                  { name: "Roadmap", path: `/project/${selectedProject.id}/roadmap` },
+                  // { name: "Timeline", path: `/project/${selectedProject.id}/timeline` },
+                  { name: "New Request", path: `/project/${selectedProject.id}/new-request` },
+                  { name: "Change Request", path: `/project/${selectedProject.id}/change-request` },
+                  {
+                    name: "Backlog",
+                    path: `/project/${selectedProject.id}/backlog`,
+                    key: `project-${selectedProject.id}-backlog`,
+                    submenu: [
+                      {
+                        name: "Sprint",
+                      
+                        key: `project-${selectedProject.id}-backlog-sprint`,
+                        submenu: [
+                          // { 
+                          //   name: "Create Sprint", 
+                          //   path: `/project/${selectedProject.id}/backlog/sprint/create`,
+                          //   key: `project-${selectedProject.id}-backlog-sprint-create`
+                          // },
+                          { 
+                            name: "Active Sprint", 
+                            // path: `/project/${selectedProject.id}/backlog/sprint/active`,
+                            path:'/activesprintss',
+                            key: `project-${selectedProject.id}-backlog-sprint-active`
+                          },
+                          { 
+                            name: "Completed Sprints", 
+                            path: `/project/${selectedProject.id}/backlog/sprint/completed`,
+                            key: `project-${selectedProject.id}-backlog-sprint-completed`
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  { name: "Calendar", path: `/project/${selectedProject.id}/calendar` },
+                  {
+                    name: "Dashboard", 
+                    path: `/project/${selectedProject.id}/db`,
+                    key: `project-${selectedProject.id}-dashboard` // Add a unique key
+                  }
+                ]
+              }
+            ] : []
           },
-          {
-            name: "Task Management",
-            path: null,
-            icon: <ChecklistIcon />,
-            submenu: [
-              { name: "All Tasks", path: "/tasks" },
-              { name: "My Tasks", path: "/mytasks" },
-              { name: "Create Task", path: "/createtask" }
-            ]
-          },
-          {
-            name: "Sprints",
-            path: null,
-            icon: <SprintIcon />,
-            submenu: [
-              { name: "Active Sprint", path: "/sprints" },
-              { name: "All Sprints", path: "/sprints/all" },
-              { name: "Create Sprint", path: "/sprints/create" },
-              // { name: "Sprint Planning", path: "/sprints/planning" },
-              // { name: "Retrospectives", path: "/sprints/retrospective" }
-            ]
-          },
-          {
-            name: "Resource Management",
-            path: null,
-            icon: <ResourceIcon />,
-            submenu: [
-              { name: "Resource Allocation", path: "/resources" },
-              { name: "Resource Utilization", path: "/resources/utilization" }
-            ]
-          },
-          { 
-            name: "Team Management", 
-            path: "/team", 
-            icon: <GroupIcon /> 
-          },
-          { 
-            name: "Calendar", 
-            path: "/calendar", 
-            icon: <CalendarIcon /> 
-          },
-          {
-            name: "Budget & Cost",
-            path: null,
-            icon: <BudgetIcon />,
-            submenu: [
-              { name: "Budget Tracking", path: "/budget" },
-              { name: "Cost Forecasts", path: "/budget/forecasts" }
-            ]
-          },
-          { 
-            name: "Risk Management", 
-            path: "/risks", 
-            icon: <RiskIcon /> 
-          },
-          {
-            name: "Reports & Analytics",
-            path: null,
-            icon: <BarChartIcon />,
-            submenu: [
-              { name: "Project Reports", path: "/reports/projects" },
-              { name: "Resource Reports", path: "/reports/resources" },
-              { name: "Budget Reports", path: "/reports/budget" },
-              { name: "Analytics Dashboard", path: "/reports/dashboard" }
-            ]
-          }
+          { name: "Project Updates", path: "/proupdates" }
         ]
-      });
-    }
+      },
+      {
+        name: "Team Management",
+        path: null,
+        icon: <GroupIcon />,
+        submenu: [
+          { name: "Create Team", path: "/createteam" },
+          { name: "Assign Team Members", path: "/assignteam" },
+          { name: "Manage Team", path: "/manageteam" },
+        ]
+      },
+      {
+        name: "Change Requirements",
+        path: null,
+        icon: <BugReportIcon />,
+        submenu: [
+          { name: "Create Change Requirement", path: "/createtask" },
+          { name: "All Change Requirements", path: "/tasks" },
+                 ]
+      },
+      // {
+      //   name: "Calendar",
+      //   path: "/calendar",
+      //   icon: <CalendarTodayIcon />
+      // },
+    ] : role === "employee" ? [
+      { name: "My Task", path: "/mytasks" }
+    ] : []
+  });
+}
+    
     return items;
   };
 
-  const renderNestedSubmenu = (submenuItems, parentPath = "") => {
+  const renderNestedSubmenu = (submenuItems, parentPath = "", level = 1) => {
+    if (!submenuItems) return null;
+    
     return submenuItems.map((subItem) => {
+      const itemKey = subItem.key || `${subItem.name.replace(/\s+/g, '')}`;
+      
       if (subItem.submenu) {
         return (
-          <React.Fragment key={subItem.name}>
+          <React.Fragment key={itemKey}>
             <ListItem
               button
               sx={{
-                pl: open ? 6 : 2,
+                pl: open ? 2 + (level * 2) : 2,  // Increase padding based on nesting level
                 '&:hover': { backgroundColor: '#dee3dc' },
                 backgroundColor: 'transparent',
                 justifyContent: open ? 'flex-start' : 'center',
                 color: 'black'
               }}
-              onClick={() => handleMenuToggle(`${subItem.name.replace(/\s+/g, '')}`)}
+              onClick={() => {
+                if (subItem.onClick) {
+                  subItem.onClick();
+                } else {
+                  handleMenuToggle(itemKey);
+                }
+              }}
+              component={subItem.path ? Link : 'div'}
+              to={subItem.path || undefined}
+            >
+              {subItem.icon && (
+                <ListItemIcon 
+                  sx={{ 
+                    minWidth: open ? 30 : 'auto', 
+                    justifyContent: 'center', 
+                    color: 'inherit',
+                    '& .MuiSvgIcon-root': { 
+                      fontSize: '1.2rem' 
+                    }
+                  }}
+                >
+                  {subItem.icon}
+                </ListItemIcon>
+              )}
+              <ListItemText 
+                primary={open ? subItem.name : ''} 
+                sx={{ 
+                  '& .MuiTypography-root': { 
+                    color: 'black',
+                    fontWeight: subItem.name === selectedProjectName ? 'bold' : 'normal'
+                  } 
+                }}
+              />
+              {open && (openMenus[itemKey] ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
+            </ListItem>
+            <Collapse in={open && openMenus[itemKey]} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding>
+                {renderNestedSubmenu(subItem.submenu, subItem.path || parentPath, level + 1)}
+              </List>
+            </Collapse>
+          </React.Fragment>
+        );
+      } else {
+        // Calculate actual path if needed
+        const actualPath = subItem.path || (parentPath ? `${parentPath}/${subItem.name.toLowerCase()}` : '');
+        const isActive = location.pathname === actualPath;
+        
+        return (
+          <Tooltip 
+            key={itemKey}
+            title={open ? "" : subItem.name}
+            placement="right"
+          >
+            <ListItem
+              button
+              component={Link}
+              to={actualPath}
+              sx={{
+                pl: open ? 2 + (level * 2) : 2,
+                '&:hover': { backgroundColor: '#dee3dc' },
+                backgroundColor: isActive ? '#d5e2e5' : 'transparent',
+                justifyContent: open ? 'flex-start' : 'center',
+                color: 'black',
+                textDecoration: 'none',
+                '& .MuiListItemText-root': { 
+                  color: 'black'
+                }
+              }}
             >
               {subItem.icon && (
                 <ListItemIcon 
@@ -507,98 +760,8 @@ const Sidebar = () => {
                   } 
                 }}
               />
-              {open && (openMenus[`${subItem.name.replace(/\s+/g, '')}`] ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
             </ListItem>
-            <Collapse in={open && openMenus[`${subItem.name.replace(/\s+/g, '')}`]} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                {subItem.submenu.map((nestedItem) => (
-                  <ListItem
-                    key={nestedItem.name}
-                    button
-                    component={Link}
-                    to={nestedItem.path}
-                    sx={{
-                      pl: open ? 11 : 2,
-                      '&:hover': { backgroundColor: '#dee3dc' },
-                      backgroundColor: location.pathname === nestedItem.path ? '#d5e2e5' : 'transparent',
-                      justifyContent: open ? 'flex-start' : 'center',
-                      color: 'black',
-                      textDecoration: 'none',
-                      '& .MuiListItemText-root': { 
-                        color: 'black'
-                      }
-                    }}
-                  >
-                    {nestedItem.icon && (
-                      <ListItemIcon 
-                        sx={{ 
-                          minWidth: open ? 30 : 'auto', 
-                          justifyContent: 'center', 
-                          color: 'inherit',
-                          '& .MuiSvgIcon-root': { 
-                            fontSize: '1.2rem' 
-                          }
-                        }}
-                      >
-                        {nestedItem.icon}
-                      </ListItemIcon>
-                    )}
-                    <ListItemText 
-                      primary={open ? nestedItem.name : ''} 
-                      sx={{ 
-                        '& .MuiTypography-root': { 
-                          color: 'black'
-                        } 
-                      }}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Collapse>
-          </React.Fragment>
-        );
-      } else {
-        return (
-          <ListItem
-            key={subItem.name}
-            button
-            component={Link}
-            to={subItem.path}
-            sx={{
-              pl: open ? 8 : 2,
-              '&:hover': { backgroundColor: '#dee3dc' },
-              backgroundColor: location.pathname === subItem.path ? '#d5e2e5' : 'transparent',
-              justifyContent: open ? 'flex-start' : 'center',
-              color: 'black',
-              textDecoration: 'none',
-              '& .MuiListItemText-root': { 
-                color: 'black'
-              }
-            }}
-          >
-            {subItem.icon && (
-              <ListItemIcon 
-                sx={{ 
-                  minWidth: open ? 30 : 'auto', 
-                  justifyContent: 'center', 
-                  color: 'inherit',
-                  '& .MuiSvgIcon-root': { 
-                    fontSize: '1.2rem' 
-                  }
-                }}
-              >
-                {subItem.icon}
-              </ListItemIcon>
-            )}
-            <ListItemText 
-              primary={open ? subItem.name : ''} 
-              sx={{ 
-                '& .MuiTypography-root': { 
-                  color: 'black'
-                } 
-              }}
-            />
-          </ListItem>
+          </Tooltip>
         );
       }
     });
@@ -658,42 +821,49 @@ const Sidebar = () => {
       </Box>
 
       <List sx={{ pb: 8 }}> 
-        {getMenuItems().map((item) => (
-          <React.Fragment key={item.key}>
-            <ListItem
-              button
-              onClick={() => handleMenuToggle(item.key)}
-              sx={{
-                backgroundColor: 'transparent',
-                '&:hover': { backgroundColor: '#dee3dc' },
-                justifyContent: open ? 'flex-start' : 'center',
-                color: 'black'
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: open ? 30 : 'auto', justifyContent: 'center', color: 'inherit',
-                '& .MuiSvgIcon-root': { 
-                  fontSize: '1.3rem' 
-                }
-              }}>
-                {item.icon}
-              </ListItemIcon>
-              {open && <ListItemText 
-                primary={item.title} 
-                sx={{ 
-                  '& .MuiTypography-root': { 
-                    color: 'black'
-                  } 
+        {getMenuItems().map((item) => {
+          const itemKey = item.key || item.title;
+          
+          return (
+            <React.Fragment key={itemKey}>
+              <ListItem
+                button
+                onClick={() => handleMenuToggle(itemKey)}
+                sx={{
+                  backgroundColor: 'transparent',
+                  '&:hover': { backgroundColor: '#dee3dc' },
+                  justifyContent: open ? 'flex-start' : 'center',
+                  color: 'black'
                 }}
-              />}
-              {open && (openMenus[item.key] ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
-            </ListItem>
-            <Collapse in={open && openMenus[item.key]} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                {renderNestedSubmenu(item.submenu)}
-              </List>
-            </Collapse>
-          </React.Fragment>
-        ))}
+              >
+                <ListItemIcon sx={{ 
+                  minWidth: open ? 30 : 'auto', 
+                  justifyContent: 'center', 
+                  color: 'inherit',
+                  '& .MuiSvgIcon-root': { 
+                    fontSize: '1.3rem' 
+                  }
+                }}>
+                  {item.icon}
+                </ListItemIcon>
+                {open && <ListItemText 
+                  primary={item.title} 
+                  sx={{ 
+                    '& .MuiTypography-root': { 
+                      color: 'black'
+                    } 
+                  }}
+                />}
+                {open && (openMenus[itemKey] ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
+              </ListItem>
+              <Collapse in={open && openMenus[itemKey]} timeout="auto" unmountOnExit>
+                <List component="div" disablePadding>
+                  {renderNestedSubmenu(item.submenu)}
+                </List>
+              </Collapse>
+            </React.Fragment>
+          );
+        })}
       </List>
     </Drawer>
   );

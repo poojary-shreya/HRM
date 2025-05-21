@@ -57,7 +57,14 @@ import ExemptionRoutes from "./routes/ExemptionRoutes.js"
 import losspropertyRoutes from "./routes/losspropertyRoutes.js"
 import employeeTdsRoutes from './routes/tdsRoutes.js';
 import employeeTcsRoutes from './routes/tcsRoutes.js';
-import projectRoutes from "./routes/projectRoutes.js"
+import projectRoutes from "./routes/projectRoutes.js";
+import issueRoutes from './routes/issueRoutes.js';
+import assignRoutes from "./routes/assignTeamRoutes.js";
+import boardRoutes from "./routes/boardRoutes.js"
+import TeamRoutes from "./routes/createTeamRoutes.js";
+import contractRoutes from "./routes/ContractorRoutes.js"
+import roadmapRoutes from './routes/roadmapRoutes.js';
+import sprintRoutes from './routes/sprintRoutes.js';
 dotenv.config();
 
 const app = express();
@@ -76,7 +83,7 @@ app.use(session({
 }))
 const PORT = process.env.PORT || 5000;
 
-
+app.use('/api', roadmapRoutes);
 app.use("/api", addfinancialRoutes);
 app.use("/api", addpersonalRoutes);
 app.use('/api/roles', rolesRoutes);
@@ -126,6 +133,13 @@ app.use("/api",losspropertyRoutes);
 app.use('/api/employees', employeeTdsRoutes);
 app.use('/api/employees', employeeTcsRoutes);
 app.use("/api/projects", projectRoutes);
+app.use('/api/issues', issueRoutes);
+
+app.use("/api",boardRoutes)
+app.use("/api/addteam",assignRoutes)
+app.use("/api/createteam",TeamRoutes);
+app.use('/api/contract',contractRoutes);
+app.use('/api/sprints', sprintRoutes);
 const startServer = async () => {
   try {
     await connectDB();

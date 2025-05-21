@@ -50,7 +50,7 @@ const Addpersonal = () => {
       phoneNumber: "",
       houseNumber: "",
       street: "",
-      crossStreet: "",
+      streetName: "",
       area: "",
       city: "",
       pinCode: "",
@@ -78,7 +78,6 @@ const Addpersonal = () => {
     return aadharRegex.test(aadhar);
   };
 
-
   const validatePhone = (phone) => {
     const phoneRegex = /^\d{10}$/;
     return phoneRegex.test(phone);
@@ -89,15 +88,83 @@ const Addpersonal = () => {
     return pincodeRegex.test(pincode);
   };
 
+  const validateEmail = (email) => {
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    
+    if (!emailRegex.test(email)) {
+      return {
+        isValid: false,
+        message: "Invalid email format"
+      };
+    }
+    
+  
+    const commonDomains = {
+      "gmail.co": "gmail.com",
+      "yahoo.co": "yahoo.com",
+      "hotmail.co": "hotmail.com",
+      "outlook.co": "outlook.com"
+    };
+    
+    const domain = email.split("@")[1];
+    
+    if (commonDomains[domain]) {
+      return {
+        isValid: false,
+        message: `Did you mean ${email.split("@")[0]}@${commonDomains[domain]}?`,
+        suggestedEmail: `${email.split("@")[0]}@${commonDomains[domain]}`
+      };
+    }
+    
+    return {
+      isValid: true,
+      message: "Valid email"
+    };
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
-   
+
+    if (!formData.personalPhoto && !previewUrl) {
+      newErrors.personalPhoto = "Personal photo is required";
+    }
+
+    if (!formData.personalDetails.firstName) {
+      newErrors.firstName = "First name is required";
+    }
+    
+    if (!formData.personalDetails.lastName) {
+      newErrors.lastName = "Last name is required";
+    }
+
+    if (!formData.personalDetails.fatherName) {
+      newErrors.fatherName = "Father's name is required";
+    }
+
+    if (!formData.personalDetails.personalemail) {
+      newErrors.personalemail = "Email is required";
+    } else if (!validateEmail(formData.personalDetails.personalemail)) {
+      newErrors.personalemail = "Invalid email format";
+    }
+
+    if (!formData.personalDetails.gender) {
+      newErrors.gender = "Gender is required";
+    }
+
+    if (!formData.personalDetails.dateOfBirth) {
+      newErrors.dateOfBirth = "Date of Birth is required";
+    }
  
     if (!formData.personalDetails.panNumber) {
       newErrors.panNumber = "PAN Number is required";
     } else if (!validatePAN(formData.personalDetails.panNumber)) {
       newErrors.panNumber = "Invalid PAN format (e.g., ABCDE1234F)";
+    }
+
+    if (!formData.personalDetails.panCardFile && !isEditMode) {
+      newErrors.panCardFile = "PAN Card document is required";
     }
 
     if (!formData.personalDetails.adharCardNumber) {
@@ -106,19 +173,83 @@ const Addpersonal = () => {
       newErrors.adharCardNumber = "Invalid Aadhar format (12 digits)";
     }
 
-  if (!validatePhone(formData.contactInfo.phoneNumber)) {
+    if (!formData.personalDetails.adharCardFile && !isEditMode) {
+      newErrors.adharCardFile = "Aadhar Card document is required";
+    }
+
+   
+    if (!formData.contactInfo.phoneNumber) {
+      newErrors.phoneNumber = "Phone number is required";
+    } else if (!validatePhone(formData.contactInfo.phoneNumber)) {
       newErrors.phoneNumber = "Valid 10-digit phone number is required";
     }
 
-   
+    if (!formData.contactInfo.houseNumber) {
+      newErrors.houseNumber = "House number is required";
+    }
 
-    if (!validatePinCode(formData.contactInfo.pinCode)) {
+    if (!formData.contactInfo.street) {
+      newErrors.street = "Street is required";
+    }
+
+    if (!formData.contactInfo.streetName) {
+      newErrors.streetName = "Street name is required";
+    }
+
+    if (!formData.contactInfo.area) {
+      newErrors.area = "Area is required";
+    }
+
+    if (!formData.contactInfo.city) {
+      newErrors.city = "City is required";
+    }
+
+    if (!formData.contactInfo.pinCode) {
+      newErrors.pinCode = "Pin code is required";
+    } else if (!validatePinCode(formData.contactInfo.pinCode)) {
       newErrors.pinCode = "Valid 6-digit pin code is required";
     }
 
-   
-    if (!validatePhone(formData.emergencyContact.mobile)) {
+ 
+    if (!formData.emergencyContact.mobile) {
+      newErrors.emergencyMobile = "Emergency mobile number is required";
+    } else if (!validatePhone(formData.emergencyContact.mobile)) {
       newErrors.emergencyMobile = "Valid 10-digit mobile number is required";
+    }
+
+    if (!formData.insurance.individualInsurance) {
+      newErrors.individualInsurance = "Individual insurance is required";
+    }
+
+    if (!formData.insurance.groupInsurance) {
+      newErrors.groupInsurance = "Group insurance is required";
+    }
+
+
+    const hasValidNomination = formData.nominations.some(
+      (nom) => nom.name && nom.relationship && nom.age
+    );
+    
+    if (!hasValidNomination) {
+      newErrors.nominations = "At least one complete nomination is required";
+    }
+
+ 
+    const hasValidQualification = formData.qualifications.some(
+      (qual) => qual.degree && qual.institution && qual.year
+    );
+    
+    if (!hasValidQualification) {
+      newErrors.qualifications = "At least one complete qualification is required";
+    }
+
+ 
+    const hasValidCertificate = formData.certificates.some(
+      (cert) => cert.name && cert.issuedBy && cert.date
+    );
+    
+    if (!hasValidCertificate) {
+      newErrors.certificates = "At least one complete certificate is required";
     }
 
     setErrors(newErrors);
@@ -225,7 +356,7 @@ const Addpersonal = () => {
                 phoneNumber: employeeData.phoneNumber,
                 houseNumber: employeeData.houseNumber,
                 street: employeeData.street,
-                crossStreet: employeeData.crossStreet,
+                streetName: employeeData.streetName || '',
                 area: employeeData.area,
                 city: employeeData.city,
                 pinCode: employeeData.pinCode
@@ -261,7 +392,6 @@ const Addpersonal = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
- 
     if (!validateForm()) {
       window.scrollTo(0, 0); 
       return;
@@ -274,7 +404,7 @@ const Addpersonal = () => {
       formDataToSend.append("employmentStatus", formData.employmentStatus);
       formDataToSend.append("company_registration_no", formData.company_registration_no);
 
-   
+    
       if (formData.personalPhoto) {
         formDataToSend.append("personalPhoto", formData.personalPhoto);
       }
@@ -402,6 +532,8 @@ const Addpersonal = () => {
             value={formData.personalDetails.lastName} 
             onChange={(e) => handleChange(e, 'personalDetails', 'lastName')} 
             required 
+            error={!!errors.lastName}
+            helperText={errors.lastName}
           />
         </Grid>
         <Grid item xs={6}>
@@ -411,6 +543,8 @@ const Addpersonal = () => {
             value={formData.personalDetails.fatherName} 
             onChange={(e) => handleChange(e, 'personalDetails', 'fatherName')} 
             required 
+            error={!!errors.fatherName}
+            helperText={errors.fatherName}
           />
         </Grid>
         <Grid item xs={6}>
@@ -420,6 +554,8 @@ const Addpersonal = () => {
             value={formData.personalDetails.personalemail} 
             onChange={(e) => handleChange(e, 'personalDetails', 'personalemail')} 
             required 
+            error={!!errors.personalemail}
+            helperText={errors.personalemail}
           />
         </Grid>
         <Grid item xs={6}>
@@ -450,7 +586,7 @@ const Addpersonal = () => {
         sx={{ 
           width: 120, 
           height: 120, 
-          border: '1px dashed grey', 
+          border: errors.personalPhoto ? '1px solid red' : '1px dashed grey', 
           borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',
@@ -478,12 +614,16 @@ const Addpersonal = () => {
         id="photo-upload"
         type="file"
         onChange={handlePersonalPhotoUpload}
+        required
       />
       <label htmlFor="photo-upload">
-        <Button variant="outlined" component="span" size="small">
-          {previewUrl ? 'Change Photo' : 'Upload Photo'}
+        <Button variant="outlined" component="span" size="small" color={errors.personalPhoto ? "error" : "primary"}>
+          {previewUrl ? 'Change Photo' : 'Upload Photo*'}
         </Button>
       </label>
+      {errors.personalPhoto && (
+        <FormHelperText error>{errors.personalPhoto}</FormHelperText>
+      )}
     </Grid>
   </Grid>
   
@@ -531,14 +671,18 @@ const Addpersonal = () => {
         <Grid item xs={6}>
           <Box sx={{ display: 'flex', flexDirection: 'column' }}>
             <Typography variant="body2" gutterBottom>
-              PAN Card File
+              PAN Card File*
               <FieldTooltip title="Upload a scanned copy of PAN card (PDF/JPEG/PNG)" />
             </Typography>
             <input 
               type="file" 
               accept=".pdf,.jpg,.jpeg,.png"
               onChange={(e) => handleFileUpload(e, 'personalDetails', 'panCardFile')} 
+              required
             />
+            {errors.panCardFile && (
+              <FormHelperText error>{errors.panCardFile}</FormHelperText>
+            )}
           </Box>
         </Grid>
       </Grid>
@@ -563,14 +707,18 @@ const Addpersonal = () => {
         <Grid item xs={6}>
           <Box sx={{ display: 'flex', flexDirection: 'column' }}>
             <Typography variant="body2" gutterBottom>
-              Aadhar Card File
+              Aadhar Card File*
               <FieldTooltip title="Upload a scanned copy of Aadhar card (PDF/JPEG/PNG)" />
             </Typography>
             <input 
               type="file" 
               accept=".pdf,.jpg,.jpeg,.png"
               onChange={(e) => handleFileUpload(e, 'personalDetails', 'adharCardFile')} 
+              required
             />
+            {errors.adharCardFile && (
+              <FormHelperText error>{errors.adharCardFile}</FormHelperText>
+            )}
           </Box>
         </Grid>
       </Grid>
@@ -622,10 +770,13 @@ const Addpersonal = () => {
           </Grid>
           <Grid item xs={6}>
             <TextField 
-              label="Cross Street" 
+              label="Street Name" 
               fullWidth 
-              value={formData.contactInfo.crossStreet} 
-              onChange={(e) => handleChange(e, 'contactInfo', 'crossStreet')} 
+              value={formData.contactInfo.streetName} 
+              onChange={(e) => handleChange(e, 'contactInfo', 'streetName')} 
+              required
+              error={!!errors.streetName}
+              helperText={errors.streetName}
             />
           </Grid>
           <Grid item xs={6}>
@@ -703,6 +854,11 @@ const Addpersonal = () => {
           Health Information
           <FieldTooltip title="Insurance details to be filled by company" />
         </Typography>
+        {errors.insurance && (
+          <Typography variant="body2" color="error" sx={{ mb: 2 }}>
+            {errors.insurance}
+          </Typography>
+        )}
         <Grid container spacing={2}>
           <Grid item xs={6}>
             <TextField 
@@ -711,6 +867,8 @@ const Addpersonal = () => {
               value={formData.insurance.individualInsurance} 
               onChange={(e) => handleChange(e, 'insurance', 'individualInsurance')} 
               required 
+              error={!!errors.individualInsurance}
+              helperText={errors.individualInsurance}
             />
           </Grid>
           <Grid item xs={6}>
@@ -720,28 +878,35 @@ const Addpersonal = () => {
               value={formData.insurance.groupInsurance} 
               onChange={(e) => handleChange(e, 'insurance', 'groupInsurance')} 
               required 
-            />
-          </Grid>
-        </Grid>
-      </Paper>
-
-      <Paper elevation={3} sx={{ padding: 3, marginBottom: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Nomination Details
-          <FieldTooltip title="Beneficiary information for company benefits" />
-        </Typography>
-        {formData.nominations.map((nomination, index) => (
-          <Grid container spacing={3} key={index} alignItems="center" sx={{ mb: 2 }}>
-            <Grid item xs={4}>
-              <TextField 
-                fullWidth 
-                label="Name" 
-                value={nomination.name} 
-                onChange={handleArrayChange("nominations", index, "name")} 
-                required 
+              error={!!errors.groupInsurance}
+              helperText={errors.groupInsurance}
               />
             </Grid>
-            <Grid item xs={4}>
+          </Grid>
+        </Paper>
+  
+        <Paper elevation={3} sx={{ padding: 3, marginBottom: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Nominations
+            <FieldTooltip title="Add beneficiary/nominee details for company benefits" />
+          </Typography>
+          {errors.nominations && (
+            <Typography variant="body2" color="error" sx={{ mb: 2 }}>
+              {errors.nominations}
+            </Typography>
+          )}
+          {formData.nominations.map((nomination, index) => (
+            <Grid container spacing={2} key={index} sx={{ mb: 2 }}>
+              <Grid item xs={4}>
+                <TextField
+                  label="Name"
+                  fullWidth
+                  value={nomination.name}
+                  onChange={handleArrayChange('nominations', index, 'name')}
+                  required
+                />
+              </Grid>
+              <Grid item xs={4}>
               <FormControl fullWidth>
                 <InputLabel>Relationship</InputLabel>
                 <Select 
@@ -758,158 +923,168 @@ const Addpersonal = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={4}>
-              <TextField 
-                fullWidth 
-                label="Age" 
-                value={nomination.age} 
-                onChange={handleArrayChange("nominations", index, "age")} 
-                required 
-                type="number"
-                inputProps={{ min: 0, max: 120 }}
-              />
-            </Grid>
-          </Grid>
-        ))}
-        <Button 
-          onClick={() => addEntry("nominations", { name: "", relationship: "", age: "" })} 
-          variant="outlined" 
-          sx={{ mt: 2 }}
-        >
-          Add Nominee
-        </Button>
-      </Paper>
-
-      <Paper elevation={3} sx={{ padding: 3, marginBottom: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Qualifications
-          <FieldTooltip title="Educational qualifications with supporting documents" />
-        </Typography>
-        {formData.qualifications.map((qualification, index) => (
-          <Grid container spacing={3} key={index} alignItems="center" sx={{ mb: 2 }}>
-            <Grid item xs={3}>
-              <TextField 
-                fullWidth 
-                label="Degree" 
-                value={qualification.degree} 
-                onChange={handleArrayChange("qualifications", index, "degree")} 
-                required 
-              />
-            </Grid>
-            <Grid item xs={3}>
-              <TextField 
-                fullWidth 
-                label="Institution" 
-                value={qualification.institution} 
-                onChange={handleArrayChange("qualifications", index, "institution")} 
-                required 
-              />
-            </Grid>
-            <Grid item xs={3}>
-              <TextField 
-                fullWidth 
-                label="Year" 
-                value={qualification.year} 
-                onChange={handleArrayChange("qualifications", index, "year")} 
-                required 
-                type="number"
-                inputProps={{ min: 1950, max: new Date().getFullYear() }}
-              />
-            </Grid>
-            <Grid item xs={3}>
-              <Typography variant="body2" gutterBottom>
-                Qualification Document
-                <FieldTooltip title="Upload degree certificate/marksheet (PDF/JPEG/PNG)" />
-              </Typography>
-              <input 
-                type="file" 
-                accept=".pdf,.jpg,.jpeg,.png" 
-                onChange={handleArrayFileUpload("qualifications", index, "file")} 
-              />
-            </Grid>
-          </Grid>
-        ))}
-        <Button 
-          onClick={() => addEntry("qualifications", { degree: "", institution: "", year: "", file: null })} 
-          variant="outlined" 
-          sx={{ mt: 2 }}
-        >
-          Add Qualification
-        </Button>
-      </Paper>
-
-     <Paper elevation={3} sx={{ padding: 3, marginBottom: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Certifications
-            <FieldTooltip title="Professional certifications with supporting documents" />
-          </Typography>
-          {formData.certificates.map((cert, index) => (
-            <Grid container spacing={3} key={index} alignItems="center" sx={{ mb: 2 }}>
-              <Grid item xs={3}>
-                <TextField 
-                  fullWidth 
-                  label="Name" 
-                  value={cert.name} 
-                  onChange={handleArrayChange("certificates", index, "name")} 
-                  required 
-                />
-              </Grid>
-              <Grid item xs={3}>
-                <TextField 
-                  fullWidth 
-                  label="Issued By" 
-                  value={cert.issuedBy} 
-                  onChange={handleArrayChange("certificates", index, "issuedBy")} 
-                  required 
-                />
-              </Grid>
-              <Grid item xs={3}>
-                <TextField 
-                  fullWidth 
-                  label="Date" 
-                  type="date"
-                  InputLabelProps={{ shrink: true }}
-                  value={cert.date} 
-                  onChange={handleArrayChange("certificates", index, "date")} 
-                  required 
-                />
-              </Grid>
-              <Grid item xs={3}>
-                <Typography variant="body2" gutterBottom>
-                  Certificate Document
-                  <FieldTooltip title="Upload certificate (PDF/JPEG/PNG)" />
-                </Typography>
-                <input 
-                  type="file" 
-                  accept=".pdf,.jpg,.jpeg,.png" 
-                  onChange={handleArrayFileUpload("certificates", index, "file")} 
+              <Grid item xs={4}>
+                <TextField
+                  label="Age"
+                  fullWidth
+                  type="number"
+                  value={nomination.age}
+                  onChange={handleArrayChange('nominations', index, 'age')}
+                  required
                 />
               </Grid>
             </Grid>
           ))}
-          <Button 
-            onClick={() => addEntry("certificates", { name: "", issuedBy: "", date: "", file: null })} 
-            variant="outlined" 
-            sx={{ mt: 2 }}
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => addEntry('nominations', { name: '', relationship: '', age: '' })}
+            sx={{ mt: 1 }}
+          >
+            Add Nominee
+          </Button>
+        </Paper>
+  
+        <Paper elevation={3} sx={{ padding: 3, marginBottom: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Qualifications
+            <FieldTooltip title="Educational qualifications with supporting documents" />
+          </Typography>
+          {errors.qualifications && (
+            <Typography variant="body2" color="error" sx={{ mb: 2 }}>
+              {errors.qualifications}
+            </Typography>
+          )}
+          {formData.qualifications.map((qualification, index) => (
+            <Grid container spacing={2} key={index} sx={{ mb: 2 }}>
+              <Grid item xs={3}>
+                <TextField
+                  label="Degree/Diploma"
+                  fullWidth
+                  value={qualification.degree}
+                  onChange={handleArrayChange('qualifications', index, 'degree')}
+                  required
+                />
+              </Grid>
+              <Grid item xs={3}>
+                <TextField
+                  label="Institution"
+                  fullWidth
+                  value={qualification.institution}
+                  onChange={handleArrayChange('qualifications', index, 'institution')}
+                  required
+                />
+              </Grid>
+              <Grid item xs={3}>
+                <TextField
+                  label="Year of Completion"
+                  fullWidth
+                  value={qualification.year}
+                  onChange={handleArrayChange('qualifications', index, 'year')}
+                  required
+                />
+              </Grid>
+              <Grid item xs={3}>
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="body2" gutterBottom>
+                    Certificate
+                  </Typography>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleArrayFileUpload('qualifications', index, 'file')}
+                  />
+                </Box>
+              </Grid>
+            </Grid>
+          ))}
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => addEntry('qualifications', { degree: '', institution: '', year: '', file: null })}
+            sx={{ mt: 1 }}
+          >
+            Add Qualification
+          </Button>
+        </Paper>
+  
+        <Paper elevation={3} sx={{ padding: 3, marginBottom: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Certificates and Achievements
+            <FieldTooltip title="Professional certifications and achievements" />
+          </Typography>
+          {errors.certificates && (
+            <Typography variant="body2" color="error" sx={{ mb: 2 }}>
+              {errors.certificates}
+            </Typography>
+          )}
+          {formData.certificates.map((certificate, index) => (
+            <Grid container spacing={2} key={index} sx={{ mb: 2 }}>
+              <Grid item xs={3}>
+                <TextField
+                  label="Certificate Name"
+                  fullWidth
+                  value={certificate.name}
+                  onChange={handleArrayChange('certificates', index, 'name')}
+                  required
+                />
+              </Grid>
+              <Grid item xs={3}>
+                <TextField
+                  label="Issued By"
+                  fullWidth
+                  value={certificate.issuedBy}
+                  onChange={handleArrayChange('certificates', index, 'issuedBy')}
+                  required
+                />
+              </Grid>
+              <Grid item xs={3}>
+                <TextField
+                  label="Date of Issue"
+                  type="date"
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  value={certificate.date}
+                  onChange={handleArrayChange('certificates', index, 'date')}
+                  required
+                />
+              </Grid>
+              <Grid item xs={3}>
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="body2" gutterBottom>
+                    Certificate
+                  </Typography>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleArrayFileUpload('certificates', index, 'file')}
+                  />
+                </Box>
+              </Grid>
+            </Grid>
+          ))}
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => addEntry('certificates', { name: '', issuedBy: '', date: '', file: null })}
+            sx={{ mt: 1 }}
           >
             Add Certificate
           </Button>
         </Paper>
+  
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
         
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <Button 
-            type="submit" 
-            variant="contained" 
-            color="primary" 
+          <Button
+            variant="contained"
+            color="primary"
             onClick={handleSubmit}
-            size="large"
-            sx={{ px: 4, py: 1 }}
           >
-            {isEditMode ? "Update Details" : "Save & Continue"}
+            {isEditMode ? "Update & Continue" : "Save & Continue"}
           </Button>
         </Box>
-            </Box>
-          );
-        };
-        
-        export default Addpersonal;
+      </Box>
+    );
+  };
+  
+  export default Addpersonal;

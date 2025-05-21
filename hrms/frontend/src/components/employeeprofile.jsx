@@ -110,18 +110,18 @@ const EmployeeProfile = () => {
             personalDetails: {
               firstName: employeeData.firstName || "",
               lastName: employeeData.lastName || "",
-              personalemail: employeeData.personalemail || "",
+              personalEmail: employeeData.personalemail || "",
               dateOfBirth: employeeData.dateOfBirth?.split('T')[0] || '',
               anniversary: employeeData.anniversary?.split('T')[0] || '',
               gender: employeeData.gender || "",
               panNumber: employeeData.panNumber || "",
-              adharCardNumber: employeeData.adharCardNumber || ""
+              aadharCardNumber: employeeData.adharCardNumber || ""
             },
             contactInfo: {
               phoneNumber: employeeData.phoneNumber || "",
               houseNumber: employeeData.houseNumber || "",
               street: employeeData.street || "",
-              crossStreet: employeeData.crossStreet || "",
+              sideStreet: employeeData.crossStreet || "",
               area: employeeData.area || "",
               city: employeeData.city || "",
               pinCode: employeeData.pinCode || ""

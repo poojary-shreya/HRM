@@ -128,7 +128,10 @@ const ViewEmployees = () => {
       case 'bankName': return 'Search by Bank Name';
       case 'individualInsurance': return 'Search by Individual Insurance';
       case 'groupInsurance': return 'Search by Group Insurance';
-      
+      case 'currentSalary': return 'Search by Current Salary';
+      case 'previousSalary': return 'Search by Previous Salary';
+      case 'taxCalculation': return 'Search by Tax Calculation';
+      default: return 'Search all fields';
     }
   };
 
@@ -150,9 +153,13 @@ const ViewEmployees = () => {
         const creditCardMatch = employee?.employeeDetails?.creditCardOffered?.toLowerCase().includes(searchTermLower);
         const bankNameMatch = employee?.finance?.bankName?.toLowerCase().includes(searchTermLower);
         const ctcMatch = employee?.finance?.ctc?.toString().toLowerCase().includes(searchTermLower);
+        const currentSalaryMatch = employee?.finance?.currentSalary?.toString().toLowerCase().includes(searchTermLower);
+        const previousSalaryMatch = employee?.finance?.previousSalary?.toString().toLowerCase().includes(searchTermLower);
+        const taxCalculationMatch = employee?.finance?.taxCalculation?.toString().toLowerCase().includes(searchTermLower);
         
         return employeeIdMatch || departmentMatch || noticePeriodMatch || 
-               resignationDateMatch || creditCardMatch || bankNameMatch || ctcMatch;
+               resignationDateMatch || creditCardMatch || bankNameMatch || 
+               ctcMatch || currentSalaryMatch || previousSalaryMatch || taxCalculationMatch;
       }
       
      
@@ -171,7 +178,12 @@ const ViewEmployees = () => {
           return employee?.finance?.ctc?.toString().toLowerCase().includes(searchTermLower);
         case 'bankName':
           return employee?.finance?.bankName?.toLowerCase().includes(searchTermLower);
-      
+        case 'currentSalary':
+          return employee?.finance?.currentSalary?.toString().toLowerCase().includes(searchTermLower);
+        case 'previousSalary':
+          return employee?.finance?.previousSalary?.toString().toLowerCase().includes(searchTermLower);
+        case 'taxCalculation':
+          return employee?.finance?.taxCalculation?.toString().toLowerCase().includes(searchTermLower);
         default:
           return false;
       }
@@ -191,7 +203,7 @@ const ViewEmployees = () => {
 
   return (
     <Container maxWidth="xl">
-      <Typography variant="h4" gutterBottom align="center" fontWeight="bold">Employee List</Typography>
+      <Typography variant="h4" gutterBottom align="center" fontWeight="bold">Employee Financial Details</Typography>
 
       <Grid container spacing={2} alignItems="center" sx={{ mb: 2}}>
         
@@ -205,7 +217,7 @@ const ViewEmployees = () => {
               onChange={handleSearchFieldChange}
               label="Search Field"
             >
-            
+              <MenuItem value="all">All Fields</MenuItem>
               <MenuItem value="employeeId">Employee ID</MenuItem>
               <MenuItem value="department">Department</MenuItem>
               <MenuItem value="resignationDate">Resignation Date</MenuItem>
@@ -213,7 +225,9 @@ const ViewEmployees = () => {
               <MenuItem value="creditCardOffered">Credit Card Offered</MenuItem>
               <MenuItem value="ctc">CTC</MenuItem>
               <MenuItem value="bankName">Bank Name</MenuItem>
-          
+              <MenuItem value="currentSalary">Current Salary</MenuItem>
+              <MenuItem value="previousSalary">Previous Salary</MenuItem>
+              <MenuItem value="taxCalculation">Tax Calculation</MenuItem>
             </Select>
           </FormControl>
         </Grid>
@@ -238,7 +252,6 @@ const ViewEmployees = () => {
             onClick={handleSearch}
             startIcon={<SearchIcon />}
             fullWidth
-           
           >
             Search
           </Button>
@@ -252,7 +265,7 @@ const ViewEmployees = () => {
               <TableRow>
                 <TableCell sx={{ minWidth: 150 }}><strong>Employee ID</strong></TableCell>
                 <TableCell sx={{ minWidth: 150 }}><strong>Department</strong></TableCell>
-                 <TableCell sx={{ minWidth: 150 }}><strong>Bank Name</strong></TableCell>
+                <TableCell sx={{ minWidth: 150 }}><strong>Bank Name</strong></TableCell>
                 <TableCell sx={{ minWidth: 150 }}><strong>Account Number</strong></TableCell>
                 <TableCell sx={{ minWidth: 150 }}><strong>IFSC Code</strong></TableCell>
                 <TableCell sx={{ minWidth: 150 }}><strong>Current Salary</strong></TableCell>
@@ -263,11 +276,9 @@ const ViewEmployees = () => {
                 <TableCell sx={{ minWidth: 150 }}><strong>Notice Period</strong></TableCell>
                 <TableCell sx={{ minWidth: 150 }}><strong>Advance Salary</strong></TableCell>
                 <TableCell sx={{ minWidth: 200 }}><strong>Credit Card Offered</strong></TableCell>
-               
-               
                 <TableCell sx={{ minWidth: 200 }}><strong>Last Updated</strong></TableCell>
                 <TableCell sx={{ minWidth: 200 }}><strong>Created At</strong></TableCell>
-                <TableCell></TableCell>
+                <TableCell sx={{ minWidth: 100 }}><strong>Actions</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -287,8 +298,6 @@ const ViewEmployees = () => {
                     <TableCell>{employee.employeeDetails.noticePeriod || "Not Provided"}</TableCell>
                     <TableCell>{employee.employeeDetails.advanceSalary || "N/A"}</TableCell>
                     <TableCell>{employee.employeeDetails.creditCardOffered || "N/A"}</TableCell>
-                  
-                   
                     <TableCell>{employee.updatedAt ? new Date(employee.updatedAt).toLocaleString() : "N/A"}</TableCell>
                     <TableCell>{employee.createdAt ? new Date(employee.createdAt).toLocaleString() : "N/A"}</TableCell>
                     <TableCell
@@ -303,7 +312,6 @@ const ViewEmployees = () => {
                         variant="contained"
                         color="primary"
                         onClick={() => handleEdit(employee)}
-                       
                       >
                         Edit
                       </Button>
@@ -312,7 +320,7 @@ const ViewEmployees = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={19} align="center">
+                  <TableCell colSpan={16} align="center">
                     No employees found.
                   </TableCell>
                 </TableRow>

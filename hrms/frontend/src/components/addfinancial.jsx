@@ -31,6 +31,16 @@ const AddFinancial = () => {
     }
   });
 
+  const [errors, setErrors] = useState({
+    finance: {
+      bankName: false,
+      accountDetails: false,
+      accountDetailsMessage: "",
+      ifscCode: false,
+      ifscCodeMessage: ""
+    }
+  });
+
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -79,24 +89,121 @@ const AddFinancial = () => {
   }, [isEditMode, state?.employee_id]);
 
   const handleChange = (e, section, field) => {
+    const value = e.target.value;
+    
     setFormData(prev => ({
       ...prev,
       [section]: {
         ...prev[section],
-        [field]: e.target.value
+        [field]: value
       }
     }));
+  
+    // Validate fields
+    if (section === 'finance') {
+      if (field === 'bankName') {
+        setErrors(prev => ({
+          ...prev,
+          finance: {
+            ...prev.finance,
+            [field]: !value.trim()
+          }
+        }));
+      } else if (field === 'accountDetails') {
+        const validation = validateAccountNumber(value);
+        setErrors(prev => ({
+          ...prev,
+          finance: {
+            ...prev.finance,
+            accountDetails: !validation.isValid,
+            accountDetailsMessage: validation.message
+          }
+        }));
+      } else if (field === 'ifscCode') {
+        const validation = validateIFSC(value);
+        setErrors(prev => ({
+          ...prev,
+          finance: {
+            ...prev.finance,
+            ifscCode: !validation.isValid,
+            ifscCodeMessage: validation.message
+          }
+        }));
+      }
+    }
   };
+  const validateAccountNumber = (accountNum) => {
+    const accountNumber = accountNum.trim();
+    if (!accountNumber) {
+      return { isValid: false, message: "Account Number is required" };
+    }
+    
+    // Check if account number only contains digits and is between 9-18 digits
+    const accountRegex = /^\d{9,18}$/;
+    if (!accountRegex.test(accountNumber)) {
+      return { isValid: false, message: "Account Number must be 9-18 digits" };
+    }
+    
+    return { isValid: true, message: "" };
+  };
+  
+  const validateIFSC = (ifsc) => {
+    const ifscCode = ifsc.trim();
+    if (!ifscCode) {
+      return { isValid: false, message: "IFSC Code is required" };
+    }
+    
+    // IFSC code format: First 4 characters are alphabets representing bank, 5th is 0, and last 6 are alphanumeric
+    const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    if (!ifscRegex.test(ifscCode)) {
+      return { isValid: false, message: "Invalid IFSC format. Should be like 'ABCD0123456'" };
+    }
+    
+    return { isValid: true, message: "" };
+  };
+    
+    
+   
+
   const customLabels = {
     ifscCode: "IFSC Code",
     ctc: "CTC",
   };
   
+  const validateForm = () => {
+    const accountValidation = validateAccountNumber(formData.finance.accountDetails);
+    const ifscValidation = validateIFSC(formData.finance.ifscCode);
+    
+    const newErrors = {
+      finance: {
+        bankName: !formData.finance.bankName.trim(),
+        accountDetails: !accountValidation.isValid,
+        accountDetailsMessage: accountValidation.message,
+        ifscCode: !ifscValidation.isValid,
+        ifscCodeMessage: ifscValidation.message
+      }
+    };
+  
+    setErrors(newErrors);
+  
+    return !(
+      newErrors.finance.bankName || 
+      newErrors.finance.accountDetails || 
+      newErrors.finance.ifscCode ||
+      !formData.employeeDetails.employeeId || 
+      !formData.employeeDetails.department
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.employeeDetails.employeeId || !formData.employeeDetails.department) {
-      alert("Employee ID and Department are required!");
+    if (!validateForm()) {
+      if (!formData.employeeDetails.employeeId || !formData.employeeDetails.department) {
+        alert("Employee ID and Department are required!");
+      } else {
+        alert("Bank Name, Account Number, and IFSC Code are required!");
+      }
       return;
     }
   
@@ -111,10 +218,10 @@ const AddFinancial = () => {
         bankName: formData.finance.bankName,
         accountNumber: formData.finance.accountDetails, 
         ifscCode: formData.finance.ifscCode,
-        currentSalary: parseFloat(formData.finance.currentSalary) || 0,
-        previousSalary: parseFloat(formData.finance.previousSalary) || 0,
-        ctc: parseFloat(formData.finance.ctc) || 0,
-        taxCalculation: parseFloat(formData.finance.taxCalculation) || 0,
+        currentSalary: parseFloat(formData.perviousfinance.currentSalary) || 0,
+        previousSalary: parseFloat(formData.perviousfinance.previousSalary) || 0,
+        ctc: parseFloat(formData.perviousfinance.ctc) || 0,
+        taxCalculation: parseFloat(formData.perviousfinance.taxCalculation) || 0,
       };
   
       const response = await axios({
@@ -158,15 +265,16 @@ const AddFinancial = () => {
           {Object.keys(formData.employeeDetails).map((field) => (
             <Grid item xs={6} key={field}>
               <TextField
-              fullWidth
-                  label={field.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase()).trim()}
-                  
+                fullWidth
+                label={field.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase()).trim()}
                 type={field === "resignationDate" ? "date" : "text"}
                 InputLabelProps={field === "resignationDate" ? { shrink: true } : {}}
                 value={formData.employeeDetails[field]}
                 onChange={(e) => handleChange(e, "employeeDetails", field)}
                 required={["department", "employeeId"].includes(field)}
                 disabled={field === "employeeId" && (state?.employee_id || isEditMode)}
+                error={["department", "employeeId"].includes(field) && !formData.employeeDetails[field]}
+                helperText={["department", "employeeId"].includes(field) && !formData.employeeDetails[field] ? `${field.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase()).trim()} is required` : ""}
               />
             </Grid>
           ))}
@@ -176,24 +284,29 @@ const AddFinancial = () => {
       <Paper elevation={3} sx={{ padding: 3, marginBottom: 3 }}>
         <Typography variant="h6" gutterBottom> Finance Information </Typography>
         <Grid container spacing={2}>
-          {Object.keys(formData.finance).map((field) => (
-            <Grid item xs={6} key={field}>
-              <TextField
-              fullWidth
-                label={
-                  customLabels[field] ||
-                  field
-                    .replace(/([A-Z])/g, " $1")
-                    .replace(/\b\w/g, char => char.toUpperCase())
-                    .trim()
-                }
-
-                value={formData.finance[field]}
-                onChange={(e) => handleChange(e, "finance", field)}
-                required
-              />
-            </Grid>
-          ))}
+        {Object.keys(formData.finance).map((field) => (
+  <Grid item xs={6} key={field}>
+    <TextField
+      fullWidth
+      label={
+        customLabels[field] ||
+        field
+          .replace(/([A-Z])/g, " $1")
+          .replace(/\b\w/g, char => char.toUpperCase())
+          .trim()
+      }
+      value={formData.finance[field]}
+      onChange={(e) => handleChange(e, "finance", field)}
+      required={true}
+      error={errors.finance[field]}
+      helperText={errors.finance[field] ? 
+        (field === 'accountDetails' ? errors.finance.accountDetailsMessage : 
+         field === 'ifscCode' ? errors.finance.ifscCodeMessage :
+         `${customLabels[field] || field.replace(/([A-Z])/g, " $1").replace(/\b\w/g, char => char.toUpperCase()).trim()} is required`) 
+        : ""}
+    />
+  </Grid>
+))}
         </Grid>
       </Paper>
 
@@ -203,7 +316,7 @@ const AddFinancial = () => {
           {Object.keys(formData.perviousfinance).map((field) => (
             <Grid item xs={6} key={field}>
               <TextField
-              fullWidth
+                fullWidth
                 label={
                   customLabels[field] ||
                   field
@@ -211,10 +324,8 @@ const AddFinancial = () => {
                     .replace(/\b\w/g, char => char.toUpperCase())
                     .trim()
                 }
-
                 value={formData.perviousfinance[field]}
                 onChange={(e) => handleChange(e, "perviousfinance", field)}
-                // required
               />
             </Grid>
           ))}

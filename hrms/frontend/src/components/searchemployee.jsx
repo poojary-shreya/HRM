@@ -61,7 +61,7 @@ const EmployeeHierarchyTree = () => {
       setLoading(true);
       const response = await axios.get('http://localhost:5000/api/employees');
       
-      // Improved data extraction from response
+   
       let employeeData;
       if (response.data.success && Array.isArray(response.data.data)) {
         employeeData = response.data.data;
@@ -72,7 +72,7 @@ const EmployeeHierarchyTree = () => {
         employeeData = [];
       }
       
-      // Check if personalPhoto is present in any employee records
+  
       const employeesWithPhotos = employeeData.filter(e => e.personalPhoto && e.personalPhoto.trim() !== '');
       console.log(`Found ${employeesWithPhotos.length} employees with photos out of ${employeeData.length} total`);
       
@@ -90,7 +90,7 @@ const EmployeeHierarchyTree = () => {
   };
 
   const renderAvatar = (employee, size = {width: 60, height: 60}, borderColor = "#2e7d32") => {
-    // Handle null/undefined employee
+ 
     if (!employee) {
       return (
         <Avatar 
@@ -139,18 +139,17 @@ const EmployeeHierarchyTree = () => {
             bgcolor: getRoleColor(employee.roleType),
             border: `3px solid ${borderColor}`,
           }}
-          // Add error handling for image loading failures
+        
           onError={(e) => {
             console.error(`Failed to load image in component: ${imageUrl} for employee ${employee.employee_id}`);
-            e.target.onerror = null; // Prevent infinite error loop
-            e.target.src = ""; // Clear the src to show initials instead
+            e.target.onerror = null; 
+            e.target.src = ""; 
           }}
         >
           {initials}
         </Avatar>
       );
     } else {
-      // No photo available, use initials
       return (
         <Avatar 
           sx={{ 
@@ -246,7 +245,7 @@ const EmployeeHierarchyTree = () => {
             setErrorMessage("No employee found with the provided details");
           }
         } catch (error) {
-          setErrorMessage("Error searching for employee");
+          setErrorMessage("EMPLOYEE NOT FOUND ");
         }
       }
     } finally {
@@ -447,7 +446,7 @@ const EmployeeHierarchyTree = () => {
               
               <Card 
                 sx={{ 
-                  width: 240,
+                  width: 280,
                   borderRadius: '4px',
                   backgroundColor: '#fcebb3',
                   color: 'white',
